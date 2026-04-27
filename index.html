@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Asset Management</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <section id="login-screen" class="login-screen">
+      <div class="login-copy">
+        <p class="eyebrow">Admin Control</p>
+        <h1>Asset management for phones and SIM inventory.</h1>
+        <p class="login-text">
+          Track assigned phones, available phones, assigned SIMs, available SIMs,
+          and exactly which employee is using each asset.
+        </p>
+      </div>
+
+      <form id="login-form" class="login-card">
+        <h2>Admin login</h2>
+        <p id="setup-message" class="info-text" hidden></p>
+        <label>
+          Username
+          <input type="email" name="username" placeholder="admin@company.com" required>
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" placeholder="Enter password" required>
+        </label>
+        <button type="submit">Login</button>
+        <p id="login-error" class="error-text" hidden>Invalid username or password</p>
+      </form>
+    </section>
+
+    <div id="app-screen" class="app-screen hidden">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Phone and SIM Inventory</p>
+          <h1>Admin asset management dashboard</h1>
+          <p class="subtle">
+            Monitor total phones and SIMs, edit assignments, and see availability at a glance.
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <div id="storage-pill" class="storage-pill">Storage: Connecting...</div>
+          <button id="logout-button" type="button" class="ghost-button">Logout</button>
+        </div>
+      </header>
+
+      <main class="main-layout">
+        <section class="stats-grid">
+          <article class="stat-card warm">
+            <span>Total phones</span>
+            <strong id="total-phones">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Assigned phones</span>
+            <strong id="assigned-phones">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Available phones</span>
+            <strong id="available-phones">0</strong>
+          </article>
+          <article class="stat-card cool">
+            <span>Total SIMs</span>
+            <strong id="total-sims">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Assigned SIMs</span>
+            <strong id="assigned-sims">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Available SIMs</span>
+            <strong id="available-sims">0</strong>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Assignments</p>
+              <h2>Employees and their phones / SIMs</h2>
+            </div>
+            <button type="button" class="secondary-button" data-open-employee>Create employee assignment</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th>Phones</th>
+                  <th>SIMs</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="employees-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="asset-columns">
+          <section class="panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Phones</p>
+                <h2>Phone inventory with IMEI</h2>
+              </div>
+              <button type="button" class="secondary-button" data-open-phone>Add phone</button>
+            </div>
+            <div class="asset-lists">
+              <div class="mini-card">
+                <h3>Available phones</h3>
+                <ul id="available-phone-list" class="asset-list"></ul>
+              </div>
+              <div class="mini-card">
+                <h3>Assigned phones</h3>
+                <ul id="assigned-phone-list" class="asset-list"></ul>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>IMEI</th>
+                    <th>Status</th>
+                    <th>Employee</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="phones-table"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">SIMs</p>
+                <h2>SIM inventory with number</h2>
+              </div>
+              <button type="button" class="secondary-button" data-open-sim>Add SIM</button>
+            </div>
+            <div class="asset-lists">
+              <div class="mini-card">
+                <h3>Available SIMs</h3>
+                <ul id="available-sim-list" class="asset-list"></ul>
+              </div>
+              <div class="mini-card">
+                <h3>Assigned SIMs</h3>
+                <ul id="assigned-sim-list" class="asset-list"></ul>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Provider</th>
+                    <th>SIM number</th>
+                    <th>Mobile</th>
+                    <th>Status</th>
+                    <th>Employee</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sims-table"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="employee-dialog" class="modal">
+    <form id="employee-form" class="modal-card" method="dialog">
+      <div class="modal-head">
+        <h3 id="employee-dialog-title">Create employee assignment</h3>
+        <button type="button" class="icon-button" data-close-dialog="employee-dialog">Close</button>
+      </div>
+      <input type="hidden" name="employeeId">
+      <label>
+        Employee name
+        <input type="text" name="name" required>
+      </label>
+      <label>
+        Department
+        <input type="text" name="department">
+      </label>
+      <label>
+        Notes
+        <input type="text" name="notes" placeholder="Optional note">
+      </label>
+
+      <div class="picker-grid">
+        <fieldset class="picker-box">
+          <legend>Assign phones</legend>
+          <div id="employee-phone-options" class="check-list"></div>
+        </fieldset>
+        <fieldset class="picker-box">
+          <legend>Assign SIMs</legend>
+          <div id="employee-sim-options" class="check-list"></div>
+        </fieldset>
+      </div>
+
+      <div class="modal-actions">
+        <button type="submit">Save employee</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="phone-dialog" class="modal">
+    <form id="phone-form" class="modal-card compact" method="dialog">
+      <div class="modal-head">
+        <h3 id="phone-dialog-title">Add phone</h3>
+        <button type="button" class="icon-button" data-close-dialog="phone-dialog">Close</button>
+      </div>
+      <input type="hidden" name="phoneId">
+      <label>
+        Phone model
+        <input type="text" name="model" required>
+      </label>
+      <label>
+        IMEI number
+        <input type="text" name="imei" required>
+      </label>
+      <label>
+        Notes
+        <input type="text" name="notes">
+      </label>
+      <div class="modal-actions">
+        <button type="submit">Save phone</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sim-dialog" class="modal">
+    <form id="sim-form" class="modal-card compact" method="dialog">
+      <div class="modal-head">
+        <h3 id="sim-dialog-title">Add SIM</h3>
+        <button type="button" class="icon-button" data-close-dialog="sim-dialog">Close</button>
+      </div>
+      <input type="hidden" name="simId">
+      <label>
+        Provider
+        <input type="text" name="provider" required>
+      </label>
+      <label>
+        SIM number
+        <input type="text" name="simNumber" required>
+      </label>
+      <label>
+        Mobile number
+        <input type="text" name="mobileNumber">
+      </label>
+      <div class="modal-actions">
+        <button type="submit">Save SIM</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
