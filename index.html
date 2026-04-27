@@ -21,9 +21,12 @@
       <form id="login-form" class="login-card">
         <h2>Admin login</h2>
         <p id="setup-message" class="info-text" hidden></p>
+        <p class="info-text subtle-login">
+          Use the admin email and password created in Supabase Authentication.
+        </p>
         <label>
-          Username
-          <input type="email" name="username" placeholder="admin@company.com" required>
+          Admin email
+          <input type="text" name="username" placeholder="admin@company.com" required>
         </label>
         <label>
           Password
@@ -32,6 +35,8 @@
         <button type="submit">Login</button>
         <p id="login-error" class="error-text" hidden>Invalid username or password</p>
       </form>
+
+      <p class="credit-line">Create by Nishant Chauhan</p>
     </section>
 
     <div id="app-screen" class="app-screen hidden">

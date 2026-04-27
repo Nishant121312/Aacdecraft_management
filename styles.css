@@ -63,6 +63,7 @@ table {
   grid-template-columns: 1.2fr 0.8fr;
   gap: 28px;
   align-items: center;
+  position: relative;
 }
 
 .login-copy h1,
@@ -435,6 +436,20 @@ tbody tr:last-child td {
   border: 1px solid rgba(27, 123, 92, 0.16);
 }
 
+.subtle-login {
+  background: rgba(212, 105, 61, 0.08);
+  border-color: rgba(212, 105, 61, 0.15);
+}
+
+.credit-line {
+  position: absolute;
+  left: 0;
+  bottom: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 @media (max-width: 1100px) {
   .stats-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -456,6 +471,10 @@ tbody tr:last-child td {
 
   .login-screen {
     display: grid;
+  }
+
+  .credit-line {
+    position: static;
   }
 }
 

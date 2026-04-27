@@ -85,6 +85,8 @@ async function initialize() {
     syncAuthView();
     if (session) {
       await loadCloudData();
+    } else {
+      renderApp();
     }
   });
 
@@ -120,6 +122,11 @@ async function handleLogin(event) {
   const email = formData.get("username").toString().trim();
   const password = formData.get("password").toString().trim();
 
+  if (!email.includes("@")) {
+    showLoginError("Use the admin email from Supabase Authentication, not a username.");
+    return;
+  }
+
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password
@@ -130,8 +137,22 @@ async function handleLogin(event) {
     return;
   }
 
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    showLoginError(sessionError.message);
+    return;
+  }
+
+  state.session = sessionData?.session ?? null;
+  if (!state.session) {
+    showLoginError("Login succeeded but no session was returned. Check Supabase Auth settings and site URL.");
+    return;
+  }
+
   loginError.hidden = true;
   event.currentTarget.reset();
+  syncAuthView();
+  await loadCloudData();
 }
 
 async function handleLogout() {
