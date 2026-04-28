@@ -204,6 +204,52 @@ table {
   margin-bottom: 16px;
 }
 
+.search-panel {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 18px;
+}
+
+.search-label {
+  max-width: 360px;
+}
+
+.search-result {
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(30, 41, 51, 0.08);
+  text-align: left;
+}
+
+.search-result-card {
+  display: grid;
+  gap: 12px;
+}
+
+.search-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-result-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.search-result-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.search-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .mini-card {
   padding: 16px;
   border-radius: 16px;
@@ -482,6 +528,7 @@ tbody tr:last-child td {
   .login-screen,
   .picker-grid,
   .asset-lists,
+  .search-result-grid,
   .topbar,
   .stats-grid {
     grid-template-columns: 1fr;

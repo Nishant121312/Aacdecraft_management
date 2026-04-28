@@ -3,10 +3,34 @@ create extension if not exists "pgcrypto";
 create table if not exists public.employees (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  department text default '',
+  employee_id text unique,
   notes text default '',
   created_at timestamptz not null default now()
 );
+
+alter table public.employees add column if not exists employee_id text;
+update public.employees
+set employee_id = coalesce(employee_id, 'EMP-' || upper(substr(replace(id::text, '-', ''), 1, 8)))
+where employee_id is null or employee_id = '';
+
+alter table public.employees alter column employee_id set not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'employees'
+      and column_name = 'department'
+  ) then
+    alter table public.employees drop column department;
+  end if;
+end $$;
+
+alter table public.employees
+drop constraint if exists employees_employee_id_key;
+alter table public.employees
+add constraint employees_employee_id_key unique (employee_id);
 
 create table if not exists public.phones (
   id uuid primary key default gen_random_uuid(),

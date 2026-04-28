@@ -93,12 +93,19 @@
             </div>
             <button type="button" class="secondary-button" data-open-employee>Create employee assignment</button>
           </div>
+          <div class="search-panel">
+            <label class="search-label" for="employee-search-input">
+              Search by Employee ID
+              <input id="employee-search-input" type="search" placeholder="Enter Employee ID">
+            </label>
+            <div id="employee-search-result" class="search-result empty-text">Search by Employee ID to view assigned phones and SIMs.</div>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Employee</th>
-                  <th>Department</th>
+                  <th>Employee ID</th>
                   <th>Phones</th>
                   <th>SIMs</th>
                   <th>Actions</th>
@@ -195,8 +202,8 @@
         <input type="text" name="name" required>
       </label>
       <label>
-        Department
-        <input type="text" name="department">
+        Employee ID
+        <input type="text" name="employeeCode" placeholder="EMP-1001" required>
       </label>
       <label>
         Notes

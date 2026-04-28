@@ -13,8 +13,8 @@ const seedData = {
     { id: "sim-5", provider: "Jio", sim_number: "899110120000000005", mobile_number: "+91 98555 66778", employee_id: null }
   ],
   employees: [
-    { id: "emp-1", name: "Rohit Verma", department: "Sales", notes: "Uses two SIMs for field work" },
-    { id: "emp-2", name: "Neha Kapoor", department: "Operations", notes: "Single phone and SIM" }
+    { id: "emp-1", employee_id: "EMP-1001", name: "Rohit Verma", notes: "Uses two SIMs for field work" },
+    { id: "emp-2", employee_id: "EMP-1002", name: "Neha Kapoor", notes: "Single phone and SIM" }
   ]
 };
 
@@ -35,7 +35,8 @@ const state = {
   storageMode: "booting",
   configReady: false,
   refreshHandle: null,
-  authSubscription: null
+  authSubscription: null,
+  searchQuery: ""
 };
 
 const config = window.ASSET_APP_CONFIG || {};
@@ -60,6 +61,8 @@ const setupMessage = document.getElementById("setup-message");
 const storagePill = document.getElementById("storage-pill");
 const appMessage = document.getElementById("app-message");
 const localSessionButton = document.getElementById("local-session-button");
+const employeeSearchInput = document.getElementById("employee-search-input");
+const employeeSearchResult = document.getElementById("employee-search-result");
 
 loginForm.addEventListener("submit", handleLogin);
 logoutButton.addEventListener("click", handleLogout);
@@ -69,6 +72,7 @@ simForm.addEventListener("submit", handleSimSave);
 document.body.addEventListener("click", handleBodyClick);
 document.addEventListener("visibilitychange", handleVisibilityRefresh);
 localSessionButton?.addEventListener("click", handleLocalSessionLogin);
+employeeSearchInput?.addEventListener("input", handleEmployeeSearch);
 
 initialize();
 
@@ -250,9 +254,7 @@ async function handleLogout() {
 function startLocalSession(email, pillText, messageText) {
   state.session = {
     mode: "local",
-    user: {
-      email
-    }
+    user: { email }
   };
   state.authMode = "local";
   state.storageMode = "local";
@@ -275,7 +277,7 @@ function restoreLocalSession(sessionData) {
 
 function hydrateLocalData() {
   const stored = readStoredLocalData();
-  const nextData = stored || cloneSeedData();
+  const nextData = normalizeData(stored || cloneSeedData());
   state.employees = nextData.employees;
   state.phones = nextData.phones;
   state.sims = nextData.sims;
@@ -322,7 +324,7 @@ async function loadCloudData(options = {}) {
     }
 
     state.storageMode = "cloud";
-    state.employees = employees;
+    state.employees = normalizeEmployees(employees);
     state.phones = phones;
     state.sims = sims;
     setStoragePill("Storage: Supabase cloud");
@@ -367,16 +369,16 @@ async function initializeDatabaseWithSeedData() {
       .from("employees")
       .insert(seedData.employees.map((employee) => ({
         name: employee.name,
-        department: employee.department,
+        employee_id: employee.employee_id,
         notes: employee.notes
       })))
-      .select("id, name");
+      .select("id, employee_id");
 
     if (employeeError || !insertedEmployees) {
       return false;
     }
 
-    const employeeIdByName = new Map(insertedEmployees.map((employee) => [employee.name, employee.id]));
+    const employeeIdByCode = new Map(insertedEmployees.map((employee) => [employee.employee_id, employee.id]));
 
     const { error: phoneError } = await supabaseClient
       .from("phones")
@@ -385,7 +387,7 @@ async function initializeDatabaseWithSeedData() {
         imei: phone.imei,
         notes: phone.notes,
         employee_id: phone.employee_id
-          ? employeeIdByName.get(seedData.employees.find((employee) => employee.id === phone.employee_id)?.name || "")
+          ? employeeIdByCode.get(seedData.employees.find((employee) => employee.id === phone.employee_id)?.employee_id || "")
           : null
       })));
 
@@ -400,7 +402,7 @@ async function initializeDatabaseWithSeedData() {
         sim_number: sim.sim_number,
         mobile_number: sim.mobile_number,
         employee_id: sim.employee_id
-          ? employeeIdByName.get(seedData.employees.find((employee) => employee.id === sim.employee_id)?.name || "")
+          ? employeeIdByCode.get(seedData.employees.find((employee) => employee.id === sim.employee_id)?.employee_id || "")
           : null
       })));
 
@@ -440,12 +442,18 @@ function handleVisibilityRefresh() {
   }
 }
 
+function handleEmployeeSearch(event) {
+  state.searchQuery = event.currentTarget.value.trim();
+  renderEmployeeSearch();
+}
+
 function renderApp() {
   renderStats();
   renderEmployees();
   renderPhones();
   renderSims();
   renderAssetLists();
+  renderEmployeeSearch();
 }
 
 function renderStats() {
@@ -481,7 +489,7 @@ function renderEmployees() {
         ${escapeHtml(employee.name)}
         <span class="muted-line">${escapeHtml(employee.notes || "No notes")}</span>
       </td>
-      <td>${escapeHtml(employee.department || "-")}</td>
+      <td>${escapeHtml(employee.employee_id || "-")}</td>
       <td>${renderAssetSummary(phones, "phone")}</td>
       <td>${renderAssetSummary(sims, "sim")}</td>
       <td>
@@ -513,7 +521,7 @@ function renderPhones() {
       <td>${escapeHtml(phone.model)}</td>
       <td>${escapeHtml(phone.imei)}</td>
       <td>${renderStatusBadge(Boolean(phone.employee_id))}</td>
-      <td>${employee ? escapeHtml(employee.name) : "-"}</td>
+      <td>${employee ? escapeHtml(`${employee.name} (${employee.employee_id})`) : "-"}</td>
       <td>
         <div class="table-actions">
           <button type="button" class="table-button" data-edit-phone="${phone.id}">Edit</button>
@@ -544,7 +552,7 @@ function renderSims() {
       <td>${escapeHtml(sim.sim_number)}</td>
       <td>${escapeHtml(sim.mobile_number || "-")}</td>
       <td>${renderStatusBadge(Boolean(sim.employee_id))}</td>
-      <td>${employee ? escapeHtml(employee.name) : "-"}</td>
+      <td>${employee ? escapeHtml(`${employee.name} (${employee.employee_id})`) : "-"}</td>
       <td>
         <div class="table-actions">
           <button type="button" class="table-button" data-edit-sim="${sim.id}">Edit</button>
@@ -578,7 +586,7 @@ function renderAssetLists() {
     assignedPhones,
     (phone) => `
       <span class="asset-main">${escapeHtml(phone.model)}</span>
-      <span class="asset-meta">IMEI: ${escapeHtml(phone.imei)} | ${escapeHtml(findEmployee(phone.employee_id)?.name || "-")}</span>
+      <span class="asset-meta">IMEI: ${escapeHtml(phone.imei)} | ${escapeHtml(formatEmployeeLabel(findEmployee(phone.employee_id)))}</span>
     `,
     "No assigned phones"
   );
@@ -598,10 +606,79 @@ function renderAssetLists() {
     assignedSims,
     (sim) => `
       <span class="asset-main">${escapeHtml(sim.sim_number)}</span>
-      <span class="asset-meta">${escapeHtml(sim.provider)} | ${escapeHtml(findEmployee(sim.employee_id)?.name || "-")}</span>
+      <span class="asset-meta">${escapeHtml(sim.provider)} | ${escapeHtml(formatEmployeeLabel(findEmployee(sim.employee_id)))}</span>
     `,
     "No assigned SIMs"
   );
+}
+
+function renderEmployeeSearch() {
+  if (!employeeSearchResult) {
+    return;
+  }
+
+  const query = normalizeEmployeeCode(state.searchQuery);
+  if (!query) {
+    employeeSearchResult.className = "search-result empty-text";
+    employeeSearchResult.textContent = "Search by Employee ID to view assigned phones and SIMs.";
+    return;
+  }
+
+  const employee = findEmployeeByCode(query);
+  if (!employee) {
+    employeeSearchResult.className = "search-result empty-text";
+    employeeSearchResult.textContent = "No employee found";
+    return;
+  }
+
+  const phones = getEmployeePhones(employee.id);
+  const sims = getEmployeeSims(employee.id);
+  employeeSearchResult.className = "search-result";
+  employeeSearchResult.innerHTML = `
+    <div class="search-result-card">
+      <div class="search-result-head">
+        <div>
+          <div class="search-result-name">${escapeHtml(employee.name)}</div>
+          <div class="search-result-meta">Employee ID: ${escapeHtml(employee.employee_id || "-")}</div>
+        </div>
+        <div class="search-result-meta">${escapeHtml(employee.notes || "No notes")}</div>
+      </div>
+      <div class="search-result-grid">
+        <div class="mini-card">
+          <h3>Assigned phones</h3>
+          <ul class="asset-list">${renderSearchAssetItems(phones, "phone")}</ul>
+        </div>
+        <div class="mini-card">
+          <h3>Assigned SIMs</h3>
+          <ul class="asset-list">${renderSearchAssetItems(sims, "sim")}</ul>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSearchAssetItems(items, type) {
+  if (items.length === 0) {
+    return '<li class="empty-text">None assigned</li>';
+  }
+
+  return items.map((item) => {
+    if (type === "phone") {
+      return `
+        <li>
+          <span class="asset-main">${escapeHtml(item.model)}</span>
+          <span class="asset-meta">IMEI: ${escapeHtml(item.imei)}</span>
+        </li>
+      `;
+    }
+
+    return `
+      <li>
+        <span class="asset-main">${escapeHtml(item.provider)}</span>
+        <span class="asset-meta">${escapeHtml(item.sim_number)} | ${escapeHtml(item.mobile_number || "-")}</span>
+      </li>
+    `;
+  }).join("");
 }
 
 function renderList(target, items, renderer, emptyText) {
@@ -715,7 +792,7 @@ function openEmployeeDialog(employeeId = "") {
   const employee = findEmployee(employeeId);
   if (employee) {
     employeeForm.elements.name.value = employee.name;
-    employeeForm.elements.department.value = employee.department || "";
+    employeeForm.elements.employeeCode.value = employee.employee_id || "";
     employeeForm.elements.notes.value = employee.notes || "";
   }
 
@@ -741,7 +818,7 @@ function renderEmployeeAssetOptions(employeeId) {
       checked,
       disabled,
       title: phone.model,
-      subtitle: `IMEI: ${phone.imei}${phone.employee_id && !checked ? ` | ${findEmployee(phone.employee_id)?.name || ""}` : ""}`
+      subtitle: `IMEI: ${phone.imei}${phone.employee_id && !checked ? ` | ${formatEmployeeLabel(findEmployee(phone.employee_id))}` : ""}`
     }));
   });
 
@@ -754,7 +831,7 @@ function renderEmployeeAssetOptions(employeeId) {
       checked,
       disabled,
       title: `${sim.provider} - ${sim.sim_number}`,
-      subtitle: `${sim.mobile_number || "No mobile number"}${sim.employee_id && !checked ? ` | ${findEmployee(sim.employee_id)?.name || ""}` : ""}`
+      subtitle: `${sim.mobile_number || "No mobile number"}${sim.employee_id && !checked ? ` | ${formatEmployeeLabel(findEmployee(sim.employee_id))}` : ""}`
     }));
   });
 }
@@ -807,19 +884,33 @@ async function handleEmployeeSave(event) {
   hideLoginError();
 
   const formData = new FormData(employeeForm);
-  const employeeId = formData.get("employeeId").toString().trim();
+  const recordId = formData.get("employeeId").toString().trim();
   const selectedPhoneIds = new Set(formData.getAll("phoneIds").map(String));
   const selectedSimIds = new Set(formData.getAll("simIds").map(String));
+  const employeeCode = normalizeEmployeeCode(formData.get("employeeCode"));
+  const name = formData.get("name").toString().trim();
+  const notes = formData.get("notes").toString().trim();
+
+  const duplicateEmployee = state.employees.find((employee) => employee.employee_id === employeeCode && employee.id !== recordId);
+  if (!employeeCode) {
+    showAppMessage("Employee ID is required.");
+    return;
+  }
+
+  if (duplicateEmployee) {
+    showAppMessage("Employee ID must be unique.");
+    return;
+  }
 
   if (isCloudMode()) {
     const employeePayload = {
-      name: formData.get("name").toString().trim(),
-      department: formData.get("department").toString().trim(),
-      notes: formData.get("notes").toString().trim()
+      name,
+      employee_id: employeeCode,
+      notes
     };
 
-    if (employeeId) {
-      employeePayload.id = employeeId;
+    if (recordId) {
+      employeePayload.id = recordId;
     }
 
     const { data: employeeRows, error: employeeError } = await supabaseClient
@@ -875,10 +966,10 @@ async function handleEmployeeSave(event) {
   }
 
   saveEmployeeLocally({
-    id: employeeId,
-    name: formData.get("name").toString().trim(),
-    department: formData.get("department").toString().trim(),
-    notes: formData.get("notes").toString().trim(),
+    id: recordId,
+    employee_id: employeeCode,
+    name,
+    notes,
     selectedPhoneIds,
     selectedSimIds
   });
@@ -1050,39 +1141,39 @@ async function unassignSim(simId) {
 
 function saveEmployeeLocally(details) {
   let employee = details.id ? findEmployee(details.id) : null;
-  const employeeId = employee?.id || createId("emp");
+  const employeeRecordId = employee?.id || createId("emp");
 
   if (employee) {
     employee.name = details.name;
-    employee.department = details.department;
+    employee.employee_id = details.employee_id;
     employee.notes = details.notes;
   } else {
     employee = {
-      id: employeeId,
+      id: employeeRecordId,
+      employee_id: details.employee_id,
       name: details.name,
-      department: details.department,
       notes: details.notes
     };
     state.employees.unshift(employee);
   }
 
   state.phones.forEach((phone) => {
-    if (phone.employee_id === employeeId && !details.selectedPhoneIds.has(phone.id)) {
+    if (phone.employee_id === employeeRecordId && !details.selectedPhoneIds.has(phone.id)) {
       phone.employee_id = null;
     }
 
     if (details.selectedPhoneIds.has(phone.id)) {
-      phone.employee_id = employeeId;
+      phone.employee_id = employeeRecordId;
     }
   });
 
   state.sims.forEach((sim) => {
-    if (sim.employee_id === employeeId && !details.selectedSimIds.has(sim.id)) {
+    if (sim.employee_id === employeeRecordId && !details.selectedSimIds.has(sim.id)) {
       sim.employee_id = null;
     }
 
     if (details.selectedSimIds.has(sim.id)) {
-      sim.employee_id = employeeId;
+      sim.employee_id = employeeRecordId;
     }
   });
 
@@ -1151,16 +1242,7 @@ function readStoredLocalData() {
       return null;
     }
 
-    const parsed = JSON.parse(rawValue);
-    if (!parsed || !Array.isArray(parsed.employees) || !Array.isArray(parsed.phones) || !Array.isArray(parsed.sims)) {
-      return null;
-    }
-
-    return {
-      employees: parsed.employees,
-      phones: parsed.phones,
-      sims: parsed.sims
-    };
+    return normalizeData(JSON.parse(rawValue));
   } catch (error) {
     console.error("Failed to read local data", error);
     return null;
@@ -1194,6 +1276,52 @@ function clearWorkingData() {
   state.phones = [];
   state.sims = [];
   renderApp();
+}
+
+function normalizeData(rawData) {
+  if (!rawData || !Array.isArray(rawData.employees) || !Array.isArray(rawData.phones) || !Array.isArray(rawData.sims)) {
+    return null;
+  }
+
+  return {
+    employees: normalizeEmployees(rawData.employees),
+    phones: rawData.phones,
+    sims: rawData.sims
+  };
+}
+
+function normalizeEmployees(employees) {
+  return employees.map((employee, index) => ({
+    ...employee,
+    employee_id: resolveEmployeeCode(employee, index),
+    notes: employee.notes || ""
+  }));
+}
+
+function generateEmployeeCode(index) {
+  return `EMP-${String(index + 1001).padStart(4, "0")}`;
+}
+
+function resolveEmployeeCode(employee, index) {
+  const existingCode = normalizeEmployeeCode(employee.employee_id);
+  const legacyDepartment = normalizeEmployeeCode(employee.department);
+  if (existingCode && existingCode !== legacyDepartment) {
+    return existingCode;
+  }
+
+  return normalizeEmployeeCode(generateEmployeeCode(index));
+}
+
+function normalizeEmployeeCode(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function formatEmployeeLabel(employee) {
+  if (!employee) {
+    return "-";
+  }
+
+  return `${employee.name} (${employee.employee_id || "-"})`;
 }
 
 function setStoragePill(text) {
@@ -1249,6 +1377,11 @@ function getEmployeeSims(employeeId) {
 
 function findEmployee(employeeId) {
   return state.employees.find((employee) => employee.id === employeeId);
+}
+
+function findEmployeeByCode(employeeCode) {
+  const normalized = normalizeEmployeeCode(employeeCode);
+  return state.employees.find((employee) => normalizeEmployeeCode(employee.employee_id) === normalized);
 }
 
 function findPhone(phoneId) {
