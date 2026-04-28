@@ -30,7 +30,7 @@ const state = {
 const config = window.ASSET_APP_CONFIG || {};
 const hasSupabaseLibrary = Boolean(window.supabase?.createClient);
 const hasConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
-const supabase = hasSupabaseLibrary && hasConfig
+const supabaseClient = hasSupabaseLibrary && hasConfig
   ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)
   : null;
 
@@ -39,7 +39,7 @@ console.log("=== App Initialization ===");
 console.log("Supabase library loaded:", hasSupabaseLibrary);
 console.log("Config present:", hasConfig);
 console.log("Supabase URL:", config.supabaseUrl);
-console.log("Supabase client created:", !!supabase);
+console.log("Supabase client created:", !!supabaseClient);
 
 const loginScreen = document.getElementById("login-screen");
 const appScreen = document.getElementById("app-screen");
@@ -66,7 +66,7 @@ document.addEventListener("visibilitychange", handleVisibilityRefresh);
 initialize();
 
 async function initialize() {
-  if (!supabase) {
+  if (!supabaseClient) {
     state.configReady = false;
     setSetupState();
     state.employees = structuredClone(seedData.employees);
@@ -80,7 +80,7 @@ async function initialize() {
   storagePill.textContent = "Storage: Supabase cloud";
 
   try {
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await supabaseClient.auth.getSession();
     if (error) {
       console.error("Session error:", error.message);
     }
@@ -93,7 +93,7 @@ async function initialize() {
   syncAuthView();
 
   // Listen for auth changes - this is the reliable way to get session updates
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     console.log("Auth state changed:", _event, session ? "logged in" : "logged out");
     state.session = session;
     syncAuthView();
@@ -129,7 +129,7 @@ async function handleLogin(event) {
 
   console.log("=== Login Attempt ===");
   
-  if (!supabase) {
+  if (!supabaseClient) {
     console.error("No Supabase client");
     showLoginError("Configure Supabase first in config.js.");
     return;
@@ -148,7 +148,7 @@ async function handleLogin(event) {
 
   // Sign in and get session directly from the response
   console.log("Calling signInWithPassword...");
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
@@ -169,7 +169,7 @@ async function handleLogin(event) {
     console.log("No session in response, trying getSession after delay...");
     // Fallback: try getSession after a short delay
     await new Promise(resolve => setTimeout(resolve, 500));
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData } = await supabaseClient.auth.getSession();
     state.session = sessionData?.session ?? null;
     console.log("getSession result:", { hasSession: !!state.session });
   }
@@ -188,11 +188,11 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
 }
 
 function showLoginError(message) {
@@ -202,9 +202,9 @@ function showLoginError(message) {
 
 async function loadCloudData() {
   const [employeesResult, phonesResult, simsResult] = await Promise.all([
-    supabase.from("employees").select("*").order("created_at", { ascending: false }),
-    supabase.from("phones").select("*").order("created_at", { ascending: false }),
-    supabase.from("sims").select("*").order("created_at", { ascending: false })
+    supabaseClient.from("employees").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("phones").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("sims").select("*").order("created_at", { ascending: false })
   ]);
 
   const firstError = employeesResult.error || phonesResult.error || simsResult.error;
@@ -225,7 +225,7 @@ function syncRefreshLoop() {
     state.refreshHandle = null;
   }
 
-  if (state.session && supabase) {
+  if (state.session && supabaseClient) {
     state.refreshHandle = window.setInterval(() => {
       loadCloudData();
     }, 20000);
@@ -233,7 +233,7 @@ function syncRefreshLoop() {
 }
 
 function handleVisibilityRefresh() {
-  if (document.visibilityState === "visible" && state.session && supabase) {
+  if (document.visibilityState === "visible" && state.session && supabaseClient) {
     loadCloudData();
   }
 }
@@ -602,7 +602,7 @@ function openSimDialog(simId = "") {
 
 async function handleEmployeeSave(event) {
   event.preventDefault();
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
@@ -621,7 +621,7 @@ async function handleEmployeeSave(event) {
     employeePayload.id = employeeId;
   }
 
-  const { data: employeeRows, error: employeeError } = await supabase
+  const { data: employeeRows, error: employeeError } = await supabaseClient
     .from("employees")
     .upsert(employeePayload)
     .select();
@@ -654,7 +654,7 @@ async function handleEmployeeSave(event) {
     }));
 
   if (phoneUpdates.length > 0) {
-    const { error } = await supabase.from("phones").upsert(phoneUpdates);
+    const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
     if (error) {
       showLoginError(error.message);
       return;
@@ -662,7 +662,7 @@ async function handleEmployeeSave(event) {
   }
 
   if (simUpdates.length > 0) {
-    const { error } = await supabase.from("sims").upsert(simUpdates);
+    const { error } = await supabaseClient.from("sims").upsert(simUpdates);
     if (error) {
       showLoginError(error.message);
       return;
@@ -675,7 +675,7 @@ async function handleEmployeeSave(event) {
 
 async function handlePhoneSave(event) {
   event.preventDefault();
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
@@ -692,7 +692,7 @@ async function handlePhoneSave(event) {
     payload.employee_id = findPhone(phoneId)?.employee_id ?? null;
   }
 
-  const { error } = await supabase.from("phones").upsert(payload);
+  const { error } = await supabaseClient.from("phones").upsert(payload);
   if (error) {
     showLoginError(error.message);
     return;
@@ -704,7 +704,7 @@ async function handlePhoneSave(event) {
 
 async function handleSimSave(event) {
   event.preventDefault();
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
@@ -721,7 +721,7 @@ async function handleSimSave(event) {
     payload.employee_id = findSim(simId)?.employee_id ?? null;
   }
 
-  const { error } = await supabase.from("sims").upsert(payload);
+  const { error } = await supabaseClient.from("sims").upsert(payload);
   if (error) {
     showLoginError(error.message);
     return;
@@ -732,7 +732,7 @@ async function handleSimSave(event) {
 }
 
 async function releaseEmployeeAssets(employeeId) {
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
@@ -752,7 +752,7 @@ async function releaseEmployeeAssets(employeeId) {
   }));
 
   if (phoneUpdates.length > 0) {
-    const { error } = await supabase.from("phones").upsert(phoneUpdates);
+    const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
     if (error) {
       showLoginError(error.message);
       return;
@@ -760,7 +760,7 @@ async function releaseEmployeeAssets(employeeId) {
   }
 
   if (simUpdates.length > 0) {
-    const { error } = await supabase.from("sims").upsert(simUpdates);
+    const { error } = await supabaseClient.from("sims").upsert(simUpdates);
     if (error) {
       showLoginError(error.message);
       return;
@@ -771,11 +771,11 @@ async function releaseEmployeeAssets(employeeId) {
 }
 
 async function unassignPhone(phoneId) {
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
-  const { error } = await supabase.from("phones").update({ employee_id: null }).eq("id", phoneId);
+  const { error } = await supabaseClient.from("phones").update({ employee_id: null }).eq("id", phoneId);
   if (error) {
     showLoginError(error.message);
     return;
@@ -785,11 +785,11 @@ async function unassignPhone(phoneId) {
 }
 
 async function unassignSim(simId) {
-  if (!supabase) {
+  if (!supabaseClient) {
     return;
   }
 
-  const { error } = await supabase.from("sims").update({ employee_id: null }).eq("id", simId);
+  const { error } = await supabaseClient.from("sims").update({ employee_id: null }).eq("id", simId);
   if (error) {
     showLoginError(error.message);
     return;
