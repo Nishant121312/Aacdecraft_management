@@ -34,6 +34,13 @@ const supabase = hasSupabaseLibrary && hasConfig
   ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)
   : null;
 
+// Debug logging
+console.log("=== App Initialization ===");
+console.log("Supabase library loaded:", hasSupabaseLibrary);
+console.log("Config present:", hasConfig);
+console.log("Supabase URL:", config.supabaseUrl);
+console.log("Supabase client created:", !!supabase);
+
 const loginScreen = document.getElementById("login-screen");
 const appScreen = document.getElementById("app-screen");
 const loginForm = document.getElementById("login-form");
@@ -72,15 +79,22 @@ async function initialize() {
   state.configReady = true;
   storagePill.textContent = "Storage: Supabase cloud";
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    showLoginError(error.message);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Session error:", error.message);
+    }
+    state.session = data?.session ?? null;
+  } catch (err) {
+    console.error("Failed to get session:", err);
+    state.session = null;
   }
 
-  state.session = data?.session ?? null;
   syncAuthView();
 
+  // Listen for auth changes - this is the reliable way to get session updates
   supabase.auth.onAuthStateChange(async (_event, session) => {
+    console.log("Auth state changed:", _event, session ? "logged in" : "logged out");
     state.session = session;
     syncAuthView();
     if (session) {
@@ -113,7 +127,10 @@ function syncAuthView() {
 async function handleLogin(event) {
   event.preventDefault();
 
+  console.log("=== Login Attempt ===");
+  
   if (!supabase) {
+    console.error("No Supabase client");
     showLoginError("Configure Supabase first in config.js.");
     return;
   }
@@ -122,33 +139,48 @@ async function handleLogin(event) {
   const email = formData.get("username").toString().trim();
   const password = formData.get("password").toString().trim();
 
+  console.log("Login email:", email);
+
   if (!email.includes("@")) {
     showLoginError("Use the admin email from Supabase Authentication, not a username.");
     return;
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  // Sign in and get session directly from the response
+  console.log("Calling signInWithPassword...");
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
   });
 
+  console.log("signInWithPassword result:", { error, hasSession: !!data?.session });
+
   if (error) {
+    console.error("Login error:", error.message);
     showLoginError(error.message);
     return;
   }
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) {
-    showLoginError(sessionError.message);
-    return;
+  // Use session directly from signInWithPassword response
+  // This is more reliable than calling getSession() immediately after
+  state.session = data?.session ?? null;
+  
+  if (!state.session) {
+    console.log("No session in response, trying getSession after delay...");
+    // Fallback: try getSession after a short delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const { data: sessionData } = await supabase.auth.getSession();
+    state.session = sessionData?.session ?? null;
+    console.log("getSession result:", { hasSession: !!state.session });
   }
 
-  state.session = sessionData?.session ?? null;
   if (!state.session) {
+    console.error("Still no session after fallback");
     showLoginError("Login succeeded but no session was returned. Check Supabase Auth settings and site URL.");
     return;
   }
 
+  console.log("Login successful, session:", state.session.access_token ? "token present" : "no token");
   loginError.hidden = true;
   event.currentTarget.reset();
   syncAuthView();

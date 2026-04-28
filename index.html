@@ -18,7 +18,7 @@
         </p>
       </div>
 
-      <form id="login-form" class="login-card" method="POST">
+      <form id="login-form" class="login-card" method="POST" action="javascript:void(0)">
         <h2>Admin login</h2>
         <p id="setup-message" class="info-text" hidden></p>
         <p class="info-text subtle-login">
@@ -267,6 +267,16 @@
     </form>
   </dialog>
 
+  <script>
+  // Prevent any form submission that might cause page reload
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    });
+  });
+</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
