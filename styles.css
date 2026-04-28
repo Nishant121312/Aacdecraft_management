@@ -309,6 +309,20 @@ button:not(.ghost-button):not(.icon-button):not(.table-button) {
   box-shadow: none;
 }
 
+.demo-button {
+  width: 100%;
+  margin-top: 12px;
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid var(--green);
+  box-shadow: none;
+}
+
+.demo-button:hover {
+  background: var(--green);
+  color: #fff;
+}
+
 .table-wrap {
   overflow-x: auto;
 }

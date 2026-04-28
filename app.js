@@ -63,12 +63,37 @@ simForm.addEventListener("submit", handleSimSave);
 document.body.addEventListener("click", handleBodyClick);
 document.addEventListener("visibilitychange", handleVisibilityRefresh);
 
+// Demo mode button
+const demoButton = document.getElementById("demo-button");
+if (demoButton) {
+  demoButton.addEventListener("click", function() {
+    // Reload page with demo mode
+    const url = new URL(window.location.href);
+    url.searchParams.set('demo', 'true');
+    window.location.href = url.toString();
+  });
+}
+
 initialize();
 
+// Check for demo mode query parameter
+const urlParams = new URLSearchParams(window.location.search);
+const isDemoMode = urlParams.get('demo') === 'true';
+
 async function initialize() {
-  if (!supabaseClient) {
+  console.log("=== Initialize function ===");
+  console.log("supabaseClient:", !!supabaseClient);
+  console.log("isDemoMode:", isDemoMode);
+  
+  // Use demo mode if explicitly requested OR if no Supabase client
+  if (!supabaseClient || isDemoMode) {
+    console.log("Using demo mode with seed data");
     state.configReady = false;
-    setSetupState();
+    if (isDemoMode) {
+      storagePill.textContent = "Storage: Demo mode (testing)";
+    } else {
+      setSetupState();
+    }
     state.employees = structuredClone(seedData.employees);
     state.phones = structuredClone(seedData.phones);
     state.sims = structuredClone(seedData.sims);
@@ -85,6 +110,7 @@ async function initialize() {
       console.error("Session error:", error.message);
     }
     state.session = data?.session ?? null;
+    console.log("Session found:", !!state.session);
   } catch (err) {
     console.error("Failed to get session:", err);
     state.session = null;
@@ -100,13 +126,23 @@ async function initialize() {
     if (session) {
       await loadCloudData();
     } else {
+      // When logged out, show empty state
+      state.employees = [];
+      state.phones = [];
+      state.sims = [];
       renderApp();
     }
   });
 
   if (state.session) {
+    console.log("User is logged in, loading cloud data...");
     await loadCloudData();
   } else {
+    console.log("User not logged in, showing empty state");
+    // Show empty state or prompt to login
+    state.employees = [];
+    state.phones = [];
+    state.sims = [];
     renderApp();
   }
 }
@@ -188,6 +224,14 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
+  // If in demo mode, just reload without demo parameter
+  if (isDemoMode) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('demo');
+    window.location.href = url.toString();
+    return;
+  }
+
   if (!supabaseClient) {
     return;
   }
@@ -201,22 +245,137 @@ function showLoginError(message) {
 }
 
 async function loadCloudData() {
-  const [employeesResult, phonesResult, simsResult] = await Promise.all([
-    supabaseClient.from("employees").select("*").order("created_at", { ascending: false }),
-    supabaseClient.from("phones").select("*").order("created_at", { ascending: false }),
-    supabaseClient.from("sims").select("*").order("created_at", { ascending: false })
-  ]);
-
-  const firstError = employeesResult.error || phonesResult.error || simsResult.error;
-  if (firstError) {
-    showLoginError(firstError.message);
+  console.log("=== loadCloudData called ===");
+  
+  if (!supabaseClient) {
+    console.log("No supabaseClient, using seed data");
+    state.employees = structuredClone(seedData.employees);
+    state.phones = structuredClone(seedData.phones);
+    state.sims = structuredClone(seedData.sims);
+    renderApp();
     return;
   }
 
-  state.employees = employeesResult.data ?? [];
-  state.phones = phonesResult.data ?? [];
-  state.sims = simsResult.data ?? [];
-  renderApp();
+  try {
+    const [employeesResult, phonesResult, simsResult] = await Promise.all([
+      supabaseClient.from("employees").select("*").order("created_at", { ascending: false }),
+      supabaseClient.from("phones").select("*").order("created_at", { ascending: false }),
+      supabaseClient.from("sims").select("*").order("created_at", { ascending: false })
+    ]);
+
+    console.log("Employees result:", employeesResult);
+    console.log("Phones result:", phonesResult);
+    console.log("Sims result:", simsResult);
+
+    const firstError = employeesResult.error || phonesResult.error || simsResult.error;
+    if (firstError) {
+      console.error("Database error:", firstError);
+      showLoginError(firstError.message);
+      return;
+    }
+
+    // Check if tables are empty - if so, offer to initialize with seed data
+    const hasEmployees = employeesResult.data && employeesResult.data.length > 0;
+    const hasPhones = phonesResult.data && phonesResult.data.length > 0;
+    const hasSims = simsResult.data && simsResult.data.length > 0;
+
+    console.log("Has data - Employees:", hasEmployees, "Phones:", hasPhones, "Sims:", hasSims);
+
+    if (!hasEmployees && !hasPhones && !hasSims) {
+      // Tables are empty - offer to initialize with seed data
+      console.log("Tables empty, offering to initialize...");
+      const shouldInit = confirm("No data found in database. Would you like to initialize with sample data?");
+      if (shouldInit) {
+        await initializeDatabaseWithSeedData();
+        // Reload after initialization
+        await loadCloudData();
+        return;
+      }
+    }
+
+    state.employees = employeesResult.data ?? [];
+    state.phones = phonesResult.data ?? [];
+    state.sims = simsResult.data ?? [];
+    renderApp();
+  } catch (err) {
+    console.error("loadCloudData error:", err);
+    // Fallback to seed data on error
+    console.log("Error loading cloud data, using seed data as fallback");
+    state.employees = structuredClone(seedData.employees);
+    state.phones = structuredClone(seedData.phones);
+    state.sims = structuredClone(seedData.sims);
+    renderApp();
+  }
+}
+
+async function initializeDatabaseWithSeedData() {
+  console.log("=== Initializing database with seed data ===");
+  
+  try {
+    // Insert employees first (they're referenced by phones and sims)
+    const { data: employees, error: empError } = await supabaseClient
+      .from("employees")
+      .insert(seedData.employees.map(e => ({
+        name: e.name,
+        department: e.department,
+        notes: e.notes
+      })))
+      .select();
+
+    if (empError) {
+      console.error("Error inserting employees:", empError);
+      alert("Error initializing employees: " + empError.message);
+      return;
+    }
+
+    // Create a mapping from old IDs to new UUIDs
+    const employeeMap = {};
+    seedData.employees.forEach((oldEmp, index) => {
+      employeeMap[oldEmp.id] = employees[index].id;
+    });
+
+    // Insert phones with mapped employee IDs
+    const phonesToInsert = seedData.phones.map(phone => ({
+      model: phone.model,
+      imei: phone.imei,
+      notes: phone.notes,
+      employee_id: phone.employee_id ? employeeMap[phone.employee_id] : null
+    }));
+
+    const { error: phoneError } = await supabaseClient
+      .from("phones")
+      .insert(phonesToInsert);
+
+    if (phoneError) {
+      console.error("Error inserting phones:", phoneError);
+      alert("Error initializing phones: " + phoneError.message);
+      return;
+    }
+
+    // Insert SIMs with mapped employee IDs
+    const simsToInsert = seedData.sims.map(sim => ({
+      provider: sim.provider,
+      sim_number: sim.sim_number,
+      mobile_number: sim.mobile_number,
+      employee_id: sim.employee_id ? employeeMap[sim.employee_id] : null
+    }));
+
+    const { error: simError } = await supabaseClient
+      .from("sims")
+      .insert(simsToInsert);
+
+    if (simError) {
+      console.error("Error inserting SIMs:", simError);
+      alert("Error initializing SIMs: " + simError.message);
+      return;
+    }
+
+    console.log("Database initialized successfully!");
+    alert("Database initialized with sample data successfully!");
+  } catch (err) {
+    console.error("initializeDatabaseWithSeedData error:", err);
+    alert("Error initializing database: " + err.message);
+  }
 }
 
 function syncRefreshLoop() {
