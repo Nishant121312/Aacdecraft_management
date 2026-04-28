@@ -18,11 +18,11 @@
         </p>
       </div>
 
-      <form id="login-form" class="login-card" method="POST" action="javascript:void(0)">
+      <form id="login-form" class="login-card">
         <h2>Admin login</h2>
         <p id="setup-message" class="info-text" hidden></p>
         <p class="info-text subtle-login">
-          Use the admin email and password created in Supabase Authentication.
+          Use the Supabase admin login when cloud data is working, or switch to a local browser session to keep the app usable in this tab.
         </p>
         <label>
           Admin email
@@ -34,7 +34,7 @@
         </label>
         <button type="submit">Login</button>
         <p id="login-error" class="error-text" hidden>Invalid username or password</p>
-        <button type="button" class="demo-button" id="demo-button">Try Demo Mode</button>
+        <button type="button" class="demo-button" id="local-session-button">Continue with local session</button>
       </form>
 
       <p class="credit-line">Create by Nishant Chauhan</p>
@@ -54,6 +54,8 @@
           <button id="logout-button" type="button" class="ghost-button">Logout</button>
         </div>
       </header>
+
+      <p id="app-message" class="info-text app-message" hidden></p>
 
       <main class="main-layout">
         <section class="stats-grid">
@@ -182,7 +184,7 @@
   </div>
 
   <dialog id="employee-dialog" class="modal">
-    <form id="employee-form" class="modal-card" method="dialog">
+    <form id="employee-form" class="modal-card">
       <div class="modal-head">
         <h3 id="employee-dialog-title">Create employee assignment</h3>
         <button type="button" class="icon-button" data-close-dialog="employee-dialog">Close</button>
@@ -219,7 +221,7 @@
   </dialog>
 
   <dialog id="phone-dialog" class="modal">
-    <form id="phone-form" class="modal-card compact" method="dialog">
+    <form id="phone-form" class="modal-card compact">
       <div class="modal-head">
         <h3 id="phone-dialog-title">Add phone</h3>
         <button type="button" class="icon-button" data-close-dialog="phone-dialog">Close</button>
@@ -244,7 +246,7 @@
   </dialog>
 
   <dialog id="sim-dialog" class="modal">
-    <form id="sim-form" class="modal-card compact" method="dialog">
+    <form id="sim-form" class="modal-card compact">
       <div class="modal-head">
         <h3 id="sim-dialog-title">Add SIM</h3>
         <button type="button" class="icon-button" data-close-dialog="sim-dialog">Close</button>
@@ -268,16 +270,6 @@
     </form>
   </dialog>
 
-  <script>
-  // Prevent any form submission that might cause page reload
-  document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('login-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    });
-  });
-</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>

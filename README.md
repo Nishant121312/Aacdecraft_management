@@ -1,9 +1,10 @@
 # Asset Management App
 
-This app is now prepared to use:
+This app is prepared to use:
 
 - `Supabase` for cloud database and admin login
-- `Netlify` or `Vercel` for free static deployment
+- `sessionStorage` as a local browser fallback when cloud auth or cloud data is unavailable
+- `Netlify` or `Vercel` for static deployment
 
 ## 1. Create Supabase project
 
@@ -43,5 +44,6 @@ window.ASSET_APP_CONFIG = {
 ## Notes
 
 - The app uses Supabase Auth email/password login. There is no signup screen in the app.
-- Data is shared across devices and browsers because it is stored in Supabase.
-- If you update data in one browser, refresh another browser to see the latest changes.
+- When Supabase is working, data is shared across devices and browsers because it is stored in Supabase.
+- When Supabase is unavailable, the app can still run in a local browser session with seeded sample data and per-tab edits stored in `sessionStorage`.
+- Local browser session data survives refresh in the same tab, but it is not a shared database.

@@ -18,13 +18,24 @@ const seedData = {
   ]
 };
 
+const STORAGE_KEYS = {
+  localSession: "asset-app-local-session-v2",
+  localData: "asset-app-local-data-v2"
+};
+
+const urlParams = new URLSearchParams(window.location.search);
+const isDemoMode = urlParams.get("demo") === "true";
+
 const state = {
   employees: [],
   phones: [],
   sims: [],
   session: null,
+  authMode: "logged-out",
+  storageMode: "booting",
   configReady: false,
-  refreshHandle: null
+  refreshHandle: null,
+  authSubscription: null
 };
 
 const config = window.ASSET_APP_CONFIG || {};
@@ -33,13 +44,6 @@ const hasConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey);
 const supabaseClient = hasSupabaseLibrary && hasConfig
   ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)
   : null;
-
-// Debug logging
-console.log("=== App Initialization ===");
-console.log("Supabase library loaded:", hasSupabaseLibrary);
-console.log("Config present:", hasConfig);
-console.log("Supabase URL:", config.supabaseUrl);
-console.log("Supabase client created:", !!supabaseClient);
 
 const loginScreen = document.getElementById("login-screen");
 const appScreen = document.getElementById("app-screen");
@@ -54,6 +58,8 @@ const simForm = document.getElementById("sim-form");
 const loginError = document.getElementById("login-error");
 const setupMessage = document.getElementById("setup-message");
 const storagePill = document.getElementById("storage-pill");
+const appMessage = document.getElementById("app-message");
+const localSessionButton = document.getElementById("local-session-button");
 
 loginForm.addEventListener("submit", handleLogin);
 logoutButton.addEventListener("click", handleLogout);
@@ -62,95 +68,94 @@ phoneForm.addEventListener("submit", handlePhoneSave);
 simForm.addEventListener("submit", handleSimSave);
 document.body.addEventListener("click", handleBodyClick);
 document.addEventListener("visibilitychange", handleVisibilityRefresh);
-
-// Demo mode button
-const demoButton = document.getElementById("demo-button");
-if (demoButton) {
-  demoButton.addEventListener("click", function() {
-    // Reload page with demo mode
-    const url = new URL(window.location.href);
-    url.searchParams.set('demo', 'true');
-    window.location.href = url.toString();
-  });
-}
+localSessionButton?.addEventListener("click", handleLocalSessionLogin);
 
 initialize();
 
-// Check for demo mode query parameter
-const urlParams = new URLSearchParams(window.location.search);
-const isDemoMode = urlParams.get('demo') === 'true';
-
 async function initialize() {
-  console.log("=== Initialize function ===");
-  console.log("supabaseClient:", !!supabaseClient);
-  console.log("isDemoMode:", isDemoMode);
-  
-  // Use demo mode if explicitly requested OR if no Supabase client
-  if (!supabaseClient || isDemoMode) {
-    console.log("Using demo mode with seed data");
-    state.configReady = false;
-    if (isDemoMode) {
-      storagePill.textContent = "Storage: Demo mode (testing)";
-    } else {
-      setSetupState();
-    }
-    state.employees = structuredClone(seedData.employees);
-    state.phones = structuredClone(seedData.phones);
-    state.sims = structuredClone(seedData.sims);
-    renderApp();
+  state.configReady = Boolean(supabaseClient);
+  setLoggedOutMessage();
+
+  if (isDemoMode) {
+    startLocalSession("demo@asset.local", "Storage: Local demo session", "Demo mode is using the bundled sample data in this browser.");
     return;
   }
 
-  state.configReady = true;
-  storagePill.textContent = "Storage: Supabase cloud";
+  if (supabaseClient) {
+    await restoreCloudSession();
+    registerAuthListener();
+  }
 
+  if (state.session && state.authMode === "cloud") {
+    syncAuthView();
+    await loadCloudData({ seedIfEmpty: true });
+    return;
+  }
+
+  const localSession = readStoredLocalSession();
+  if (localSession) {
+    restoreLocalSession(localSession);
+    return;
+  }
+
+  clearWorkingData();
+  syncAuthView();
+}
+
+function registerAuthListener() {
+  if (!supabaseClient || state.authSubscription) {
+    return;
+  }
+
+  const { data } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    if (state.authMode === "local" && !session) {
+      return;
+    }
+
+    if (session) {
+      state.session = session;
+      state.authMode = "cloud";
+      syncAuthView();
+      await loadCloudData({ seedIfEmpty: true });
+      return;
+    }
+
+    state.session = null;
+    state.authMode = "logged-out";
+    clearWorkingData();
+    syncAuthView();
+    setLoggedOutMessage();
+  });
+
+  state.authSubscription = data.subscription;
+}
+
+async function restoreCloudSession() {
   try {
     const { data, error } = await supabaseClient.auth.getSession();
     if (error) {
-      console.error("Session error:", error.message);
+      showLoginError(error.message);
+      return;
     }
-    state.session = data?.session ?? null;
-    console.log("Session found:", !!state.session);
-  } catch (err) {
-    console.error("Failed to get session:", err);
-    state.session = null;
-  }
 
-  syncAuthView();
-
-  // Listen for auth changes - this is the reliable way to get session updates
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-    console.log("Auth state changed:", _event, session ? "logged in" : "logged out");
-    state.session = session;
-    syncAuthView();
-    if (session) {
-      await loadCloudData();
-    } else {
-      // When logged out, show empty state
-      state.employees = [];
-      state.phones = [];
-      state.sims = [];
-      renderApp();
+    if (data?.session) {
+      state.session = data.session;
+      state.authMode = "cloud";
     }
-  });
-
-  if (state.session) {
-    console.log("User is logged in, loading cloud data...");
-    await loadCloudData();
-  } else {
-    console.log("User not logged in, showing empty state");
-    // Show empty state or prompt to login
-    state.employees = [];
-    state.phones = [];
-    state.sims = [];
-    renderApp();
+  } catch (error) {
+    console.error("Failed to restore cloud session", error);
   }
 }
 
-function setSetupState() {
+function setLoggedOutMessage() {
   setupMessage.hidden = false;
-  setupMessage.textContent = "Cloud backend is not connected yet. Add your Supabase URL and publishable key in config.js, then log in with the admin email and password you create in Supabase Auth.";
-  storagePill.textContent = "Storage: Demo mode only";
+
+  if (supabaseClient) {
+    setupMessage.textContent = "Use your Supabase admin email and password for cloud data, or continue with a local browser session if you want the app to work without the database.";
+    return;
+  }
+
+  setupMessage.textContent = "Supabase is not available here, so this app will use a local browser session with sample data. That local data stays in this browser tab and can survive a refresh.";
 }
 
 function syncAuthView() {
@@ -162,99 +167,127 @@ function syncAuthView() {
 
 async function handleLogin(event) {
   event.preventDefault();
-
-  console.log("=== Login Attempt ===");
-  
-  if (!supabaseClient) {
-    console.error("No Supabase client");
-    showLoginError("Configure Supabase first in config.js.");
-    return;
-  }
+  hideLoginError();
 
   const formData = new FormData(event.currentTarget);
   const email = formData.get("username").toString().trim();
   const password = formData.get("password").toString().trim();
 
-  console.log("Login email:", email);
-
-  if (!email.includes("@")) {
-    showLoginError("Use the admin email from Supabase Authentication, not a username.");
+  if (!email || !email.includes("@")) {
+    showLoginError("Enter a valid admin email address.");
     return;
   }
 
-  // Sign in and get session directly from the response
-  console.log("Calling signInWithPassword...");
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  console.log("signInWithPassword result:", { error, hasSession: !!data?.session });
-
-  if (error) {
-    console.error("Login error:", error.message);
-    showLoginError(error.message);
+  if (!password) {
+    showLoginError("Enter the password to continue.");
     return;
   }
 
-  // Use session directly from signInWithPassword response
-  // This is more reliable than calling getSession() immediately after
-  state.session = data?.session ?? null;
-  
-  if (!state.session) {
-    console.log("No session in response, trying getSession after delay...");
-    // Fallback: try getSession after a short delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    state.session = sessionData?.session ?? null;
-    console.log("getSession result:", { hasSession: !!state.session });
-  }
-
-  if (!state.session) {
-    console.error("Still no session after fallback");
-    showLoginError("Login succeeded but no session was returned. Check Supabase Auth settings and site URL.");
+  if (!supabaseClient) {
+    startLocalSession(email, "Storage: Local browser session", "Cloud login is unavailable here, so the app is using local browser data.");
+    event.currentTarget.reset();
     return;
   }
 
-  console.log("Login successful, session:", state.session.access_token ? "token present" : "no token");
-  loginError.hidden = true;
-  event.currentTarget.reset();
-  syncAuthView();
-  await loadCloudData();
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      showLoginError(`${error.message} You can still use the local browser session button below.`);
+      return;
+    }
+
+    state.session = data?.session ?? null;
+    if (!state.session) {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      state.session = sessionData?.session ?? null;
+    }
+
+    if (!state.session) {
+      showLoginError("Login did not return a session. Check the Supabase auth settings and allowed site URL.");
+      return;
+    }
+
+    state.authMode = "cloud";
+    clearStoredLocalSession();
+    event.currentTarget.reset();
+    syncAuthView();
+    await loadCloudData({ seedIfEmpty: true });
+  } catch (error) {
+    console.error("Login failed", error);
+    showLoginError("Cloud login failed unexpectedly. You can use the local browser session as a fallback.");
+  }
+}
+
+function handleLocalSessionLogin() {
+  hideLoginError();
+  const email = loginForm.elements.username.value.trim() || "admin@asset.local";
+  startLocalSession(email, "Storage: Local browser session", "The app is running against local sample data in this browser tab.");
 }
 
 async function handleLogout() {
-  // If in demo mode, just reload without demo parameter
-  if (isDemoMode) {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('demo');
-    window.location.href = url.toString();
-    return;
+  clearStoredLocalSession();
+  hideAppMessage();
+
+  if (state.authMode === "cloud" && supabaseClient) {
+    try {
+      await supabaseClient.auth.signOut();
+    } catch (error) {
+      console.error("Cloud logout failed", error);
+    }
   }
 
-  if (!supabaseClient) {
-    return;
-  }
-
-  await supabaseClient.auth.signOut();
+  state.session = null;
+  state.authMode = "logged-out";
+  clearWorkingData();
+  syncAuthView();
+  setLoggedOutMessage();
 }
 
-function showLoginError(message) {
-  loginError.hidden = false;
-  loginError.textContent = message;
+function startLocalSession(email, pillText, messageText) {
+  state.session = {
+    mode: "local",
+    user: {
+      email
+    }
+  };
+  state.authMode = "local";
+  state.storageMode = "local";
+  writeStoredLocalSession({ email });
+  hydrateLocalData();
+  setStoragePill(pillText);
+  showAppMessage(messageText);
+  hideLoginError();
+  syncAuthView();
+  renderApp();
 }
 
-async function loadCloudData() {
-  console.log("=== loadCloudData called ===");
-  
-  if (!supabaseClient) {
-    console.log("No supabaseClient, using seed data");
-    state.employees = structuredClone(seedData.employees);
-    state.phones = structuredClone(seedData.phones);
-    state.sims = structuredClone(seedData.sims);
-    renderApp();
-    return;
+function restoreLocalSession(sessionData) {
+  startLocalSession(
+    sessionData.email || "admin@asset.local",
+    "Storage: Local browser session",
+    "Restored your browser session data from this tab."
+  );
+}
+
+function hydrateLocalData() {
+  const stored = readStoredLocalData();
+  const nextData = stored || cloneSeedData();
+  state.employees = nextData.employees;
+  state.phones = nextData.phones;
+  state.sims = nextData.sims;
+  persistLocalData();
+}
+
+async function loadCloudData(options = {}) {
+  if (!supabaseClient || !state.session) {
+    return false;
   }
+
+  hideLoginError();
 
   try {
     const [employeesResult, phonesResult, simsResult] = await Promise.all([
@@ -263,118 +296,118 @@ async function loadCloudData() {
       supabaseClient.from("sims").select("*").order("created_at", { ascending: false })
     ]);
 
-    console.log("Employees result:", employeesResult);
-    console.log("Phones result:", phonesResult);
-    console.log("Sims result:", simsResult);
-
     const firstError = employeesResult.error || phonesResult.error || simsResult.error;
     if (firstError) {
-      console.error("Database error:", firstError);
-      showLoginError(firstError.message);
-      return;
+      showAppMessage(`Cloud data is unavailable right now: ${firstError.message}. Falling back to local browser data.`);
+      startCloudFallback();
+      return false;
     }
 
-    // Check if tables are empty - if so, offer to initialize with seed data
-    const hasEmployees = employeesResult.data && employeesResult.data.length > 0;
-    const hasPhones = phonesResult.data && phonesResult.data.length > 0;
-    const hasSims = simsResult.data && simsResult.data.length > 0;
+    const employees = employeesResult.data ?? [];
+    const phones = phonesResult.data ?? [];
+    const sims = simsResult.data ?? [];
+    const isEmpty = employees.length === 0 && phones.length === 0 && sims.length === 0;
 
-    console.log("Has data - Employees:", hasEmployees, "Phones:", hasPhones, "Sims:", hasSims);
-
-    if (!hasEmployees && !hasPhones && !hasSims) {
-      // Tables are empty - offer to initialize with seed data
-      console.log("Tables empty, offering to initialize...");
-      const shouldInit = confirm("No data found in database. Would you like to initialize with sample data?");
-      if (shouldInit) {
-        await initializeDatabaseWithSeedData();
-        // Reload after initialization
-        await loadCloudData();
-        return;
+    if (isEmpty && options.seedIfEmpty) {
+      const seeded = await initializeDatabaseWithSeedData();
+      if (seeded) {
+        return loadCloudData({ seedIfEmpty: false });
       }
     }
 
-    state.employees = employeesResult.data ?? [];
-    state.phones = phonesResult.data ?? [];
-    state.sims = simsResult.data ?? [];
+    if (isEmpty) {
+      showAppMessage("Cloud tables are still empty, so the dashboard is using local sample data for now.");
+      startCloudFallback();
+      return false;
+    }
+
+    state.storageMode = "cloud";
+    state.employees = employees;
+    state.phones = phones;
+    state.sims = sims;
+    setStoragePill("Storage: Supabase cloud");
+    showAppMessage("Connected to Supabase cloud data.");
     renderApp();
-  } catch (err) {
-    console.error("loadCloudData error:", err);
-    // Fallback to seed data on error
-    console.log("Error loading cloud data, using seed data as fallback");
-    state.employees = structuredClone(seedData.employees);
-    state.phones = structuredClone(seedData.phones);
-    state.sims = structuredClone(seedData.sims);
-    renderApp();
+    return true;
+  } catch (error) {
+    console.error("Cloud data load failed", error);
+    showAppMessage("Cloud data could not be loaded, so the app switched to local browser data.");
+    startCloudFallback();
+    return false;
   }
 }
 
-async function initializeDatabaseWithSeedData() {
-  console.log("=== Initializing database with seed data ===");
-  
-  try {
-    // Insert employees first (they're referenced by phones and sims)
-    const { data: employees, error: empError } = await supabaseClient
-      .from("employees")
-      .insert(seedData.employees.map(e => ({
-        name: e.name,
-        department: e.department,
-        notes: e.notes
-      })))
-      .select();
+function startCloudFallback() {
+  state.storageMode = "local-fallback";
+  hydrateLocalData();
+  setStoragePill("Storage: Local browser fallback");
+  renderApp();
+}
 
-    if (empError) {
-      console.error("Error inserting employees:", empError);
-      alert("Error initializing employees: " + empError.message);
-      return;
+async function initializeDatabaseWithSeedData() {
+  if (!supabaseClient) {
+    return false;
+  }
+
+  try {
+    const { data: existingEmployees, error: existingEmployeesError } = await supabaseClient
+      .from("employees")
+      .select("id")
+      .limit(1);
+
+    if (existingEmployeesError) {
+      return false;
     }
 
-    // Create a mapping from old IDs to new UUIDs
-    const employeeMap = {};
-    seedData.employees.forEach((oldEmp, index) => {
-      employeeMap[oldEmp.id] = employees[index].id;
-    });
+    if (existingEmployees.length > 0) {
+      return true;
+    }
 
-    // Insert phones with mapped employee IDs
-    const phonesToInsert = seedData.phones.map(phone => ({
-      model: phone.model,
-      imei: phone.imei,
-      notes: phone.notes,
-      employee_id: phone.employee_id ? employeeMap[phone.employee_id] : null
-    }));
+    const { data: insertedEmployees, error: employeeError } = await supabaseClient
+      .from("employees")
+      .insert(seedData.employees.map((employee) => ({
+        name: employee.name,
+        department: employee.department,
+        notes: employee.notes
+      })))
+      .select("id, name");
+
+    if (employeeError || !insertedEmployees) {
+      return false;
+    }
+
+    const employeeIdByName = new Map(insertedEmployees.map((employee) => [employee.name, employee.id]));
 
     const { error: phoneError } = await supabaseClient
       .from("phones")
-      .insert(phonesToInsert);
+      .insert(seedData.phones.map((phone) => ({
+        model: phone.model,
+        imei: phone.imei,
+        notes: phone.notes,
+        employee_id: phone.employee_id
+          ? employeeIdByName.get(seedData.employees.find((employee) => employee.id === phone.employee_id)?.name || "")
+          : null
+      })));
 
     if (phoneError) {
-      console.error("Error inserting phones:", phoneError);
-      alert("Error initializing phones: " + phoneError.message);
-      return;
+      return false;
     }
-
-    // Insert SIMs with mapped employee IDs
-    const simsToInsert = seedData.sims.map(sim => ({
-      provider: sim.provider,
-      sim_number: sim.sim_number,
-      mobile_number: sim.mobile_number,
-      employee_id: sim.employee_id ? employeeMap[sim.employee_id] : null
-    }));
 
     const { error: simError } = await supabaseClient
       .from("sims")
-      .insert(simsToInsert);
+      .insert(seedData.sims.map((sim) => ({
+        provider: sim.provider,
+        sim_number: sim.sim_number,
+        mobile_number: sim.mobile_number,
+        employee_id: sim.employee_id
+          ? employeeIdByName.get(seedData.employees.find((employee) => employee.id === sim.employee_id)?.name || "")
+          : null
+      })));
 
-    if (simError) {
-      console.error("Error inserting SIMs:", simError);
-      alert("Error initializing SIMs: " + simError.message);
-      return;
-    }
-
-    console.log("Database initialized successfully!");
-    alert("Database initialized with sample data successfully!");
-  } catch (err) {
-    console.error("initializeDatabaseWithSeedData error:", err);
-    alert("Error initializing database: " + err.message);
+    return !simError;
+  } catch (error) {
+    console.error("Cloud seed failed", error);
+    return false;
   }
 }
 
@@ -384,16 +417,26 @@ function syncRefreshLoop() {
     state.refreshHandle = null;
   }
 
-  if (state.session && supabaseClient) {
+  if (state.authMode === "cloud" && supabaseClient) {
     state.refreshHandle = window.setInterval(() => {
-      loadCloudData();
+      loadCloudData({ seedIfEmpty: false });
     }, 20000);
   }
 }
 
 function handleVisibilityRefresh() {
-  if (document.visibilityState === "visible" && state.session && supabaseClient) {
-    loadCloudData();
+  if (document.visibilityState !== "visible") {
+    return;
+  }
+
+  if (state.authMode === "cloud" && supabaseClient) {
+    loadCloudData({ seedIfEmpty: false });
+    return;
+  }
+
+  if (state.authMode === "local") {
+    hydrateLocalData();
+    renderApp();
   }
 }
 
@@ -761,200 +804,432 @@ function openSimDialog(simId = "") {
 
 async function handleEmployeeSave(event) {
   event.preventDefault();
-  if (!supabaseClient) {
-    return;
-  }
+  hideLoginError();
 
   const formData = new FormData(employeeForm);
   const employeeId = formData.get("employeeId").toString().trim();
   const selectedPhoneIds = new Set(formData.getAll("phoneIds").map(String));
   const selectedSimIds = new Set(formData.getAll("simIds").map(String));
 
-  const employeePayload = {
-    name: formData.get("name").toString().trim(),
-    department: formData.get("department").toString().trim(),
-    notes: formData.get("notes").toString().trim()
-  };
+  if (isCloudMode()) {
+    const employeePayload = {
+      name: formData.get("name").toString().trim(),
+      department: formData.get("department").toString().trim(),
+      notes: formData.get("notes").toString().trim()
+    };
 
-  if (employeeId) {
-    employeePayload.id = employeeId;
-  }
+    if (employeeId) {
+      employeePayload.id = employeeId;
+    }
 
-  const { data: employeeRows, error: employeeError } = await supabaseClient
-    .from("employees")
-    .upsert(employeePayload)
-    .select();
+    const { data: employeeRows, error: employeeError } = await supabaseClient
+      .from("employees")
+      .upsert(employeePayload)
+      .select();
 
-  if (employeeError) {
-    showLoginError(employeeError.message);
+    if (employeeError) {
+      showAppMessage(employeeError.message);
+      return;
+    }
+
+    const savedEmployeeId = employeeRows[0].id;
+    const phoneUpdates = state.phones
+      .filter((phone) => phone.employee_id === savedEmployeeId || selectedPhoneIds.has(phone.id))
+      .map((phone) => ({
+        id: phone.id,
+        model: phone.model,
+        imei: phone.imei,
+        notes: phone.notes || "",
+        employee_id: selectedPhoneIds.has(phone.id) ? savedEmployeeId : null
+      }));
+
+    const simUpdates = state.sims
+      .filter((sim) => sim.employee_id === savedEmployeeId || selectedSimIds.has(sim.id))
+      .map((sim) => ({
+        id: sim.id,
+        provider: sim.provider,
+        sim_number: sim.sim_number,
+        mobile_number: sim.mobile_number || "",
+        employee_id: selectedSimIds.has(sim.id) ? savedEmployeeId : null
+      }));
+
+    if (phoneUpdates.length > 0) {
+      const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
+      if (error) {
+        showAppMessage(error.message);
+        return;
+      }
+    }
+
+    if (simUpdates.length > 0) {
+      const { error } = await supabaseClient.from("sims").upsert(simUpdates);
+      if (error) {
+        showAppMessage(error.message);
+        return;
+      }
+    }
+
+    closeDialog("employee-dialog");
+    await loadCloudData({ seedIfEmpty: false });
     return;
   }
 
-  const savedEmployeeId = employeeRows[0].id;
-
-  const phoneUpdates = state.phones
-    .filter((phone) => phone.employee_id === savedEmployeeId || selectedPhoneIds.has(phone.id))
-    .map((phone) => ({
-      id: phone.id,
-      model: phone.model,
-      imei: phone.imei,
-      notes: phone.notes || "",
-      employee_id: selectedPhoneIds.has(phone.id) ? savedEmployeeId : null
-    }));
-
-  const simUpdates = state.sims
-    .filter((sim) => sim.employee_id === savedEmployeeId || selectedSimIds.has(sim.id))
-    .map((sim) => ({
-      id: sim.id,
-      provider: sim.provider,
-      sim_number: sim.sim_number,
-      mobile_number: sim.mobile_number || "",
-      employee_id: selectedSimIds.has(sim.id) ? savedEmployeeId : null
-    }));
-
-  if (phoneUpdates.length > 0) {
-    const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
-    if (error) {
-      showLoginError(error.message);
-      return;
-    }
-  }
-
-  if (simUpdates.length > 0) {
-    const { error } = await supabaseClient.from("sims").upsert(simUpdates);
-    if (error) {
-      showLoginError(error.message);
-      return;
-    }
-  }
-
+  saveEmployeeLocally({
+    id: employeeId,
+    name: formData.get("name").toString().trim(),
+    department: formData.get("department").toString().trim(),
+    notes: formData.get("notes").toString().trim(),
+    selectedPhoneIds,
+    selectedSimIds
+  });
   closeDialog("employee-dialog");
-  await loadCloudData();
 }
 
 async function handlePhoneSave(event) {
   event.preventDefault();
-  if (!supabaseClient) {
-    return;
-  }
+  hideLoginError();
 
   const formData = new FormData(phoneForm);
+  const phoneId = formData.get("phoneId").toString().trim();
   const payload = {
     model: formData.get("model").toString().trim(),
     imei: formData.get("imei").toString().trim(),
     notes: formData.get("notes").toString().trim()
   };
 
-  const phoneId = formData.get("phoneId").toString().trim();
-  if (phoneId) {
-    payload.id = phoneId;
-    payload.employee_id = findPhone(phoneId)?.employee_id ?? null;
-  }
+  if (isCloudMode()) {
+    if (phoneId) {
+      payload.id = phoneId;
+      payload.employee_id = findPhone(phoneId)?.employee_id ?? null;
+    }
 
-  const { error } = await supabaseClient.from("phones").upsert(payload);
-  if (error) {
-    showLoginError(error.message);
+    const { error } = await supabaseClient.from("phones").upsert(payload);
+    if (error) {
+      showAppMessage(error.message);
+      return;
+    }
+
+    closeDialog("phone-dialog");
+    await loadCloudData({ seedIfEmpty: false });
     return;
   }
 
+  savePhoneLocally(phoneId, payload);
   closeDialog("phone-dialog");
-  await loadCloudData();
 }
 
 async function handleSimSave(event) {
   event.preventDefault();
-  if (!supabaseClient) {
-    return;
-  }
+  hideLoginError();
 
   const formData = new FormData(simForm);
+  const simId = formData.get("simId").toString().trim();
   const payload = {
     provider: formData.get("provider").toString().trim(),
     sim_number: formData.get("simNumber").toString().trim(),
     mobile_number: formData.get("mobileNumber").toString().trim()
   };
 
-  const simId = formData.get("simId").toString().trim();
-  if (simId) {
-    payload.id = simId;
-    payload.employee_id = findSim(simId)?.employee_id ?? null;
-  }
+  if (isCloudMode()) {
+    if (simId) {
+      payload.id = simId;
+      payload.employee_id = findSim(simId)?.employee_id ?? null;
+    }
 
-  const { error } = await supabaseClient.from("sims").upsert(payload);
-  if (error) {
-    showLoginError(error.message);
+    const { error } = await supabaseClient.from("sims").upsert(payload);
+    if (error) {
+      showAppMessage(error.message);
+      return;
+    }
+
+    closeDialog("sim-dialog");
+    await loadCloudData({ seedIfEmpty: false });
     return;
   }
 
+  saveSimLocally(simId, payload);
   closeDialog("sim-dialog");
-  await loadCloudData();
 }
 
 async function releaseEmployeeAssets(employeeId) {
-  if (!supabaseClient) {
+  if (isCloudMode()) {
+    const phoneUpdates = getEmployeePhones(employeeId).map((phone) => ({
+      id: phone.id,
+      model: phone.model,
+      imei: phone.imei,
+      notes: phone.notes || "",
+      employee_id: null
+    }));
+    const simUpdates = getEmployeeSims(employeeId).map((sim) => ({
+      id: sim.id,
+      provider: sim.provider,
+      sim_number: sim.sim_number,
+      mobile_number: sim.mobile_number || "",
+      employee_id: null
+    }));
+
+    if (phoneUpdates.length > 0) {
+      const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
+      if (error) {
+        showAppMessage(error.message);
+        return;
+      }
+    }
+
+    if (simUpdates.length > 0) {
+      const { error } = await supabaseClient.from("sims").upsert(simUpdates);
+      if (error) {
+        showAppMessage(error.message);
+        return;
+      }
+    }
+
+    await loadCloudData({ seedIfEmpty: false });
     return;
   }
 
-  const phoneUpdates = getEmployeePhones(employeeId).map((phone) => ({
-    id: phone.id,
-    model: phone.model,
-    imei: phone.imei,
-    notes: phone.notes || "",
-    employee_id: null
-  }));
-  const simUpdates = getEmployeeSims(employeeId).map((sim) => ({
-    id: sim.id,
-    provider: sim.provider,
-    sim_number: sim.sim_number,
-    mobile_number: sim.mobile_number || "",
-    employee_id: null
-  }));
-
-  if (phoneUpdates.length > 0) {
-    const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
-    if (error) {
-      showLoginError(error.message);
-      return;
+  state.phones.forEach((phone) => {
+    if (phone.employee_id === employeeId) {
+      phone.employee_id = null;
     }
-  }
+  });
 
-  if (simUpdates.length > 0) {
-    const { error } = await supabaseClient.from("sims").upsert(simUpdates);
-    if (error) {
-      showLoginError(error.message);
-      return;
+  state.sims.forEach((sim) => {
+    if (sim.employee_id === employeeId) {
+      sim.employee_id = null;
     }
-  }
+  });
 
-  await loadCloudData();
+  persistLocalData();
+  renderApp();
 }
 
 async function unassignPhone(phoneId) {
-  if (!supabaseClient) {
+  if (isCloudMode()) {
+    const { error } = await supabaseClient.from("phones").update({ employee_id: null }).eq("id", phoneId);
+    if (error) {
+      showAppMessage(error.message);
+      return;
+    }
+
+    await loadCloudData({ seedIfEmpty: false });
     return;
   }
 
-  const { error } = await supabaseClient.from("phones").update({ employee_id: null }).eq("id", phoneId);
-  if (error) {
-    showLoginError(error.message);
+  const phone = findPhone(phoneId);
+  if (!phone) {
     return;
   }
 
-  await loadCloudData();
+  phone.employee_id = null;
+  persistLocalData();
+  renderApp();
 }
 
 async function unassignSim(simId) {
-  if (!supabaseClient) {
+  if (isCloudMode()) {
+    const { error } = await supabaseClient.from("sims").update({ employee_id: null }).eq("id", simId);
+    if (error) {
+      showAppMessage(error.message);
+      return;
+    }
+
+    await loadCloudData({ seedIfEmpty: false });
     return;
   }
 
-  const { error } = await supabaseClient.from("sims").update({ employee_id: null }).eq("id", simId);
-  if (error) {
-    showLoginError(error.message);
+  const sim = findSim(simId);
+  if (!sim) {
     return;
   }
 
-  await loadCloudData();
+  sim.employee_id = null;
+  persistLocalData();
+  renderApp();
+}
+
+function saveEmployeeLocally(details) {
+  let employee = details.id ? findEmployee(details.id) : null;
+  const employeeId = employee?.id || createId("emp");
+
+  if (employee) {
+    employee.name = details.name;
+    employee.department = details.department;
+    employee.notes = details.notes;
+  } else {
+    employee = {
+      id: employeeId,
+      name: details.name,
+      department: details.department,
+      notes: details.notes
+    };
+    state.employees.unshift(employee);
+  }
+
+  state.phones.forEach((phone) => {
+    if (phone.employee_id === employeeId && !details.selectedPhoneIds.has(phone.id)) {
+      phone.employee_id = null;
+    }
+
+    if (details.selectedPhoneIds.has(phone.id)) {
+      phone.employee_id = employeeId;
+    }
+  });
+
+  state.sims.forEach((sim) => {
+    if (sim.employee_id === employeeId && !details.selectedSimIds.has(sim.id)) {
+      sim.employee_id = null;
+    }
+
+    if (details.selectedSimIds.has(sim.id)) {
+      sim.employee_id = employeeId;
+    }
+  });
+
+  persistLocalData();
+  renderApp();
+}
+
+function savePhoneLocally(phoneId, payload) {
+  const existing = phoneId ? findPhone(phoneId) : null;
+
+  if (existing) {
+    existing.model = payload.model;
+    existing.imei = payload.imei;
+    existing.notes = payload.notes;
+  } else {
+    state.phones.unshift({
+      id: createId("ph"),
+      model: payload.model,
+      imei: payload.imei,
+      notes: payload.notes,
+      employee_id: null
+    });
+  }
+
+  persistLocalData();
+  renderApp();
+}
+
+function saveSimLocally(simId, payload) {
+  const existing = simId ? findSim(simId) : null;
+
+  if (existing) {
+    existing.provider = payload.provider;
+    existing.sim_number = payload.sim_number;
+    existing.mobile_number = payload.mobile_number;
+  } else {
+    state.sims.unshift({
+      id: createId("sim"),
+      provider: payload.provider,
+      sim_number: payload.sim_number,
+      mobile_number: payload.mobile_number,
+      employee_id: null
+    });
+  }
+
+  persistLocalData();
+  renderApp();
+}
+
+function persistLocalData() {
+  try {
+    sessionStorage.setItem(STORAGE_KEYS.localData, JSON.stringify({
+      employees: state.employees,
+      phones: state.phones,
+      sims: state.sims
+    }));
+  } catch (error) {
+    console.error("Failed to persist local data", error);
+  }
+}
+
+function readStoredLocalData() {
+  try {
+    const rawValue = sessionStorage.getItem(STORAGE_KEYS.localData);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || !Array.isArray(parsed.employees) || !Array.isArray(parsed.phones) || !Array.isArray(parsed.sims)) {
+      return null;
+    }
+
+    return {
+      employees: parsed.employees,
+      phones: parsed.phones,
+      sims: parsed.sims
+    };
+  } catch (error) {
+    console.error("Failed to read local data", error);
+    return null;
+  }
+}
+
+function writeStoredLocalSession(sessionData) {
+  try {
+    sessionStorage.setItem(STORAGE_KEYS.localSession, JSON.stringify(sessionData));
+  } catch (error) {
+    console.error("Failed to store local session", error);
+  }
+}
+
+function readStoredLocalSession() {
+  try {
+    const rawValue = sessionStorage.getItem(STORAGE_KEYS.localSession);
+    return rawValue ? JSON.parse(rawValue) : null;
+  } catch (error) {
+    console.error("Failed to read local session", error);
+    return null;
+  }
+}
+
+function clearStoredLocalSession() {
+  sessionStorage.removeItem(STORAGE_KEYS.localSession);
+}
+
+function clearWorkingData() {
+  state.employees = [];
+  state.phones = [];
+  state.sims = [];
+  renderApp();
+}
+
+function setStoragePill(text) {
+  storagePill.textContent = text;
+}
+
+function showLoginError(message) {
+  loginError.hidden = false;
+  loginError.textContent = message;
+}
+
+function hideLoginError() {
+  loginError.hidden = true;
+  loginError.textContent = "";
+}
+
+function showAppMessage(message) {
+  if (!appMessage) {
+    return;
+  }
+
+  appMessage.hidden = false;
+  appMessage.textContent = message;
+}
+
+function hideAppMessage() {
+  if (!appMessage) {
+    return;
+  }
+
+  appMessage.hidden = true;
+  appMessage.textContent = "";
+}
+
+function isCloudMode() {
+  return state.authMode === "cloud" && state.storageMode === "cloud" && Boolean(supabaseClient);
 }
 
 function closeDialog(dialogId) {
@@ -988,6 +1263,18 @@ function createEmptyRow(colspan, text) {
   const row = document.createElement("tr");
   row.innerHTML = `<td colspan="${colspan}" class="empty-text">${escapeHtml(text)}</td>`;
   return row;
+}
+
+function cloneSeedData() {
+  return structuredClone(seedData);
+}
+
+function createId(prefix) {
+  if (window.crypto?.randomUUID) {
+    return `${prefix}-${window.crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
 function escapeHtml(value) {
