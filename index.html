@@ -14,7 +14,7 @@
           <img src="hero-brand.png" alt="Acadecraft brand mark">
         </div>
         <p class="eyebrow">Admin Control</p>
-        <h1>Asset Management For Phones & SIM Inventory<span class="accent-dot">.</span></h1>
+        <h1>Asset management for phones and SIM inventory<span class="accent-dot">.</span></h1>
         <p class="login-text">
           Track assigned phones, available phones, assigned SIMs, available SIMs,
           and exactly which employee is using each asset.
@@ -33,7 +33,7 @@
         </p>
         <label>
           Admin email
-          <input type="text" name="username" placeholder="admin@acadecraft.com" required>
+          <input type="text" name="username" placeholder="admin@company.com" required>
         </label>
         <label>
           Password
@@ -50,10 +50,10 @@
     <div id="app-screen" class="app-screen hidden">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Phone and SIM Inventory</p>
+          <p class="eyebrow">Asset Control Center</p>
           <h1>Admin Asset Management Dashboard</h1>
           <p class="subtle">
-            Monitor total phones and SIMs, edit assignments, and see availability at a glance.
+            Manage every asset category, employee assignments, and assignment history from one shared workspace.
           </p>
         </div>
         <div class="topbar-actions">
@@ -63,144 +63,68 @@
       </header>
 
       <p id="app-message" class="info-text app-message" hidden></p>
+      <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
-      <main class="main-layout">
+      <main class="main-layout dashboard-layout">
         <section class="stats-grid">
           <article class="stat-card warm">
-            <span>Total phones</span>
-            <strong id="total-phones">0</strong>
+            <span>Total assets</span>
+            <strong id="total-assets">0</strong>
           </article>
           <article class="stat-card">
-            <span>Assigned phones</span>
-            <strong id="assigned-phones">0</strong>
+            <span>Assigned assets</span>
+            <strong id="assigned-assets">0</strong>
           </article>
           <article class="stat-card">
-            <span>Available phones</span>
-            <strong id="available-phones">0</strong>
+            <span>Available assets</span>
+            <strong id="available-assets">0</strong>
           </article>
           <article class="stat-card cool">
-            <span>Total SIMs</span>
-            <strong id="total-sims">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>Assigned SIMs</span>
-            <strong id="assigned-sims">0</strong>
-          </article>
-          <article class="stat-card">
-            <span>Available SIMs</span>
-            <strong id="available-sims">0</strong>
+            <span>Total employees</span>
+            <strong id="total-employees">0</strong>
           </article>
         </section>
 
         <section class="panel">
-          <div class="section-header">
+          <div class="section-header dashboard-header">
             <div>
-              <p class="eyebrow">Assignments</p>
-              <h2>Employees and their phones / SIMs</h2>
+              <p class="eyebrow">Workspace</p>
+              <h2>Asset management system</h2>
             </div>
-            <button type="button" class="secondary-button" data-open-employee>Create employee assignment</button>
           </div>
-          <div class="search-panel">
-            <label class="search-label" for="employee-search-input">
-              Search by Employee ID
-              <input id="employee-search-input" type="search" placeholder="Enter Employee ID">
-            </label>
-            <div id="employee-search-result" class="search-result empty-text">Search by Employee ID to view assigned phones and SIMs.</div>
+
+          <div class="dashboard-nav" id="dashboard-nav">
+            <button type="button" class="secondary-button nav-button" data-view="overview">Overview</button>
+            <button type="button" class="secondary-button nav-button" data-view="employees">Employees</button>
+            <button type="button" class="secondary-button nav-button" data-view="history">Assignment history</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Employee ID</th>
-                  <th>Phones</th>
-                  <th>SIMs</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="employees-table"></tbody>
-            </table>
+
+          <div class="category-strip" id="category-strip">
+            <button type="button" class="ghost-button category-button" data-category="phones">Phones</button>
+            <button type="button" class="ghost-button category-button" data-category="sims">SIMs</button>
+            <button type="button" class="ghost-button category-button" data-category="laptops">Laptops</button>
+            <button type="button" class="ghost-button category-button" data-category="chargers">Chargers</button>
+            <button type="button" class="ghost-button category-button" data-category="desktops">Desktops</button>
+            <button type="button" class="ghost-button category-button" data-category="cpus">CPUs</button>
+            <button type="button" class="ghost-button category-button" data-category="monitors">Monitors</button>
+            <button type="button" class="ghost-button category-button" data-category="mouse">Mouse</button>
+            <button type="button" class="ghost-button category-button" data-category="keyboards">Keyboards</button>
+            <button type="button" class="ghost-button category-button" data-category="headphones">Headphones</button>
+            <button type="button" class="ghost-button category-button" data-category="ups">UPS</button>
           </div>
         </section>
 
-        <section class="asset-columns">
-          <section class="panel">
-            <div class="section-header">
-              <div>
-                <p class="eyebrow">Phones</p>
-                <h2>Phone inventory with IMEI</h2>
-              </div>
-              <button type="button" class="secondary-button" data-open-phone>Add phone</button>
-            </div>
-            <div class="asset-lists">
-              <div class="mini-card">
-                <h3>Available phones</h3>
-                <ul id="available-phone-list" class="asset-list"></ul>
-              </div>
-              <div class="mini-card">
-                <h3>Assigned phones</h3>
-                <ul id="assigned-phone-list" class="asset-list"></ul>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Model</th>
-                    <th>IMEI</th>
-                    <th>Status</th>
-                    <th>Employee</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="phones-table"></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="section-header">
-              <div>
-                <p class="eyebrow">SIMs</p>
-                <h2>SIM inventory with number</h2>
-              </div>
-              <button type="button" class="secondary-button" data-open-sim>Add SIM</button>
-            </div>
-            <div class="asset-lists">
-              <div class="mini-card">
-                <h3>Available SIMs</h3>
-                <ul id="available-sim-list" class="asset-list"></ul>
-              </div>
-              <div class="mini-card">
-                <h3>Assigned SIMs</h3>
-                <ul id="assigned-sim-list" class="asset-list"></ul>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Provider</th>
-                    <th>SIM number</th>
-                    <th>Mobile</th>
-                    <th>Status</th>
-                    <th>Employee</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="sims-table"></tbody>
-              </table>
-            </div>
-          </section>
+        <section class="panel">
+          <div id="view-container" class="view-container"></div>
         </section>
       </main>
     </div>
   </div>
 
   <dialog id="employee-dialog" class="modal">
-    <form id="employee-form" class="modal-card">
+    <form id="employee-form" class="modal-card compact">
       <div class="modal-head">
-        <h3 id="employee-dialog-title">Create employee assignment</h3>
+        <h3 id="employee-dialog-title">Create employee</h3>
         <button type="button" class="icon-button" data-close-dialog="employee-dialog">Close</button>
       </div>
       <input type="hidden" name="employeeId">
@@ -213,73 +137,75 @@
         <input type="text" name="employeeCode" placeholder="EMP-1001" required>
       </label>
       <label>
+        Email
+        <input type="email" name="email" placeholder="employee@company.com">
+      </label>
+      <label>
+        Department
+        <input type="text" name="department" placeholder="Operations">
+      </label>
+      <label>
         Notes
         <input type="text" name="notes" placeholder="Optional note">
       </label>
-
-      <div class="picker-grid">
-        <fieldset class="picker-box">
-          <legend>Assign phones</legend>
-          <div id="employee-phone-options" class="check-list"></div>
-        </fieldset>
-        <fieldset class="picker-box">
-          <legend>Assign SIMs</legend>
-          <div id="employee-sim-options" class="check-list"></div>
-        </fieldset>
-      </div>
-
       <div class="modal-actions">
         <button type="submit">Save employee</button>
       </div>
     </form>
   </dialog>
 
-  <dialog id="phone-dialog" class="modal">
-    <form id="phone-form" class="modal-card compact">
+  <dialog id="asset-dialog" class="modal">
+    <form id="asset-form" class="modal-card compact">
       <div class="modal-head">
-        <h3 id="phone-dialog-title">Add phone</h3>
-        <button type="button" class="icon-button" data-close-dialog="phone-dialog">Close</button>
+        <h3 id="asset-dialog-title">Add asset</h3>
+        <button type="button" class="icon-button" data-close-dialog="asset-dialog">Close</button>
       </div>
-      <input type="hidden" name="phoneId">
+      <input type="hidden" name="assetId">
       <label>
-        Phone model
-        <input type="text" name="model" required>
+        Category
+        <select name="category" id="asset-category-select" required></select>
       </label>
       <label>
-        IMEI number
-        <input type="text" name="imei" required>
+        Asset name
+        <input type="text" name="assetName" placeholder="HP ProBook 440" required>
+      </label>
+      <label>
+        <span id="asset-serial-label">Serial / IMEI</span>
+        <input type="text" name="serialNumber" placeholder="SN-1001" required>
       </label>
       <label>
         Notes
-        <input type="text" name="notes">
+        <input type="text" name="notes" placeholder="Optional note">
       </label>
       <div class="modal-actions">
-        <button type="submit">Save phone</button>
+        <button type="submit">Save asset</button>
       </div>
     </form>
   </dialog>
 
-  <dialog id="sim-dialog" class="modal">
-    <form id="sim-form" class="modal-card compact">
+  <dialog id="assignment-dialog" class="modal">
+    <form id="assignment-form" class="modal-card compact">
       <div class="modal-head">
-        <h3 id="sim-dialog-title">Add SIM</h3>
-        <button type="button" class="icon-button" data-close-dialog="sim-dialog">Close</button>
+        <h3 id="assignment-dialog-title">Assign asset</h3>
+        <button type="button" class="icon-button" data-close-dialog="assignment-dialog">Close</button>
       </div>
-      <input type="hidden" name="simId">
+      <input type="hidden" name="assetId">
+      <div class="assignment-summary" id="assignment-summary"></div>
       <label>
-        Provider
-        <input type="text" name="provider" required>
+        Search by Employee ID
+        <input type="search" name="employeeCodeSearch" id="assignment-employee-code" placeholder="EMP-1001" autocomplete="off" required>
+      </label>
+      <div class="search-result" id="assignment-employee-result">Enter an Employee ID to load the employee name.</div>
+      <label>
+        Assign to employee
+        <select name="employeeId" id="assignment-employee-select" required hidden></select>
       </label>
       <label>
-        SIM number
-        <input type="text" name="simNumber" required>
-      </label>
-      <label>
-        Mobile number
-        <input type="text" name="mobileNumber">
+        Assignment note
+        <textarea name="assignmentNote" rows="3" placeholder="Optional assignment note"></textarea>
       </label>
       <div class="modal-actions">
-        <button type="submit">Save SIM</button>
+        <button type="submit">Confirm assignment</button>
       </div>
     </form>
   </dialog>

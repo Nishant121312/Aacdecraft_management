@@ -1,26 +1,74 @@
-const seedData = {
-  phones: [
-    { id: "ph-1", model: "Samsung A54", imei: "356712341111111", notes: "Sales coverage", employee_id: "emp-1" },
-    { id: "ph-2", model: "iPhone 13", imei: "356712342222222", notes: "Regional manager", employee_id: "emp-2" },
-    { id: "ph-3", model: "Redmi Note 12", imei: "356712343333333", notes: "Spare phone", employee_id: null },
-    { id: "ph-4", model: "Vivo Y200", imei: "356712344444444", notes: "Support desk", employee_id: null }
-  ],
-  sims: [
-    { id: "sim-1", provider: "Airtel", sim_number: "899110120000000001", mobile_number: "+91 98111 22334", employee_id: "emp-1" },
-    { id: "sim-2", provider: "Jio", sim_number: "899110120000000002", mobile_number: "+91 98222 33445", employee_id: "emp-1" },
-    { id: "sim-3", provider: "Vi", sim_number: "899110120000000003", mobile_number: "+91 98333 44556", employee_id: "emp-2" },
-    { id: "sim-4", provider: "Airtel", sim_number: "899110120000000004", mobile_number: "+91 98444 55667", employee_id: null },
-    { id: "sim-5", provider: "Jio", sim_number: "899110120000000005", mobile_number: "+91 98555 66778", employee_id: null }
-  ],
-  employees: [
-    { id: "emp-1", employee_id: "EMP-1001", name: "Rohit Verma", notes: "Uses two SIMs for field work" },
-    { id: "emp-2", employee_id: "EMP-1002", name: "Neha Kapoor", notes: "Single phone and SIM" }
-  ]
-};
+const CATEGORY_DEFINITIONS = [
+  { key: "phones", label: "Phones", serialLabel: "IMEI / Serial" },
+  { key: "sims", label: "SIMs", serialLabel: "SIM number" },
+  { key: "laptops", label: "Laptops", serialLabel: "Serial number" },
+  { key: "chargers", label: "Chargers", serialLabel: "Serial number" },
+  { key: "desktops", label: "Desktops", serialLabel: "Serial number" },
+  { key: "cpus", label: "CPUs", serialLabel: "Serial number" },
+  { key: "monitors", label: "Monitors", serialLabel: "Serial number" },
+  { key: "mouse", label: "Mouse", serialLabel: "Serial number" },
+  { key: "keyboards", label: "Keyboards", serialLabel: "Serial number" },
+  { key: "headphones", label: "Headphones", serialLabel: "Serial number" },
+  { key: "ups", label: "UPS", serialLabel: "Serial number" }
+];
 
 const STORAGE_KEYS = {
-  localSession: "asset-app-local-session-v2",
-  localData: "asset-app-local-data-v2"
+  localSession: "asset-app-local-session-v3",
+  localData: "asset-app-local-data-v3"
+};
+
+const seedData = {
+  employees: [
+    {
+      id: "emp-1",
+      employee_id: "EMP-1001",
+      name: "Rohit Verma",
+      email: "rohit.verma@acadecraft.com",
+      department: "Sales",
+      notes: "Field operations"
+    },
+    {
+      id: "emp-2",
+      employee_id: "EMP-1002",
+      name: "Neha Kapoor",
+      email: "neha.kapoor@acadecraft.com",
+      department: "Operations",
+      notes: "Regional manager"
+    },
+    {
+      id: "emp-3",
+      employee_id: "EMP-1003",
+      name: "Arjun Singh",
+      email: "arjun.singh@acadecraft.com",
+      department: "Support",
+      notes: "Service desk"
+    }
+  ],
+  assets: [
+    { id: "ast-1", category: "phones", asset_name: "Samsung A54", serial_number: "356712341111111", status: "Assigned", assigned_employee_id: "emp-1", notes: "Sales coverage" },
+    { id: "ast-2", category: "sims", asset_name: "Airtel SIM", serial_number: "899110120000000001", status: "Assigned", assigned_employee_id: "emp-1", notes: "+91 98111 22334" },
+    { id: "ast-3", category: "phones", asset_name: "iPhone 13", serial_number: "356712342222222", status: "Assigned", assigned_employee_id: "emp-2", notes: "Regional manager device" },
+    { id: "ast-4", category: "sims", asset_name: "Jio SIM", serial_number: "899110120000000002", status: "Available", assigned_employee_id: null, notes: "+91 98222 33445" },
+    { id: "ast-5", category: "laptops", asset_name: "HP ProBook 440", serial_number: "LTP-HP-440-001", status: "Assigned", assigned_employee_id: "emp-2", notes: "Primary work laptop" },
+    { id: "ast-6", category: "chargers", asset_name: "Dell 65W Charger", serial_number: "CHR-DL-065-001", status: "Available", assigned_employee_id: null, notes: "Spare charger" },
+    { id: "ast-7", category: "desktops", asset_name: "Lenovo ThinkCentre", serial_number: "DST-LEN-001", status: "Available", assigned_employee_id: null, notes: "Back office" },
+    { id: "ast-8", category: "cpus", asset_name: "Intel i7 CPU", serial_number: "CPU-I7-001", status: "Available", assigned_employee_id: null, notes: "Graphics team" },
+    { id: "ast-9", category: "monitors", asset_name: "Dell 24 inch Monitor", serial_number: "MON-DEL-024", status: "Assigned", assigned_employee_id: "emp-3", notes: "Support desk monitor" },
+    { id: "ast-10", category: "mouse", asset_name: "Logitech M185", serial_number: "MOU-LOG-185", status: "Assigned", assigned_employee_id: "emp-3", notes: "Wireless mouse" },
+    { id: "ast-11", category: "keyboards", asset_name: "HP Wired Keyboard", serial_number: "KEY-HP-001", status: "Available", assigned_employee_id: null, notes: "Spare keyboard" },
+    { id: "ast-12", category: "headphones", asset_name: "Jabra Headset", serial_number: "HDP-JBR-001", status: "Assigned", assigned_employee_id: "emp-3", notes: "Support calls" },
+    { id: "ast-13", category: "ups", asset_name: "APC UPS 600VA", serial_number: "UPS-APC-600", status: "Available", assigned_employee_id: null, notes: "Conference room" }
+  ],
+  assignments: [
+    { id: "asn-1", asset_id: "ast-1", employee_id: "emp-1", assigned_at: "2026-04-25T10:00:00.000Z", released_at: null, notes: "Sales coverage" },
+    { id: "asn-2", asset_id: "ast-2", employee_id: "emp-1", assigned_at: "2026-04-25T10:05:00.000Z", released_at: null, notes: "Mobile data plan" },
+    { id: "asn-3", asset_id: "ast-3", employee_id: "emp-2", assigned_at: "2026-04-26T09:30:00.000Z", released_at: null, notes: "Leadership device" },
+    { id: "asn-4", asset_id: "ast-5", employee_id: "emp-2", assigned_at: "2026-04-26T09:40:00.000Z", released_at: null, notes: "Laptop allocation" },
+    { id: "asn-5", asset_id: "ast-9", employee_id: "emp-3", assigned_at: "2026-04-27T08:45:00.000Z", released_at: null, notes: "Dual screen setup" },
+    { id: "asn-6", asset_id: "ast-10", employee_id: "emp-3", assigned_at: "2026-04-27T08:48:00.000Z", released_at: null, notes: "Peripheral setup" },
+    { id: "asn-7", asset_id: "ast-12", employee_id: "emp-3", assigned_at: "2026-04-20T11:15:00.000Z", released_at: null, notes: "Support headset" },
+    { id: "asn-8", asset_id: "ast-4", employee_id: "emp-1", assigned_at: "2026-04-18T12:00:00.000Z", released_at: "2026-04-23T14:30:00.000Z", notes: "Temporary SIM assignment" }
+  ]
 };
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -28,15 +76,22 @@ const isDemoMode = urlParams.get("demo") === "true";
 
 const state = {
   employees: [],
-  phones: [],
-  sims: [],
+  assets: [],
+  assignments: [],
   session: null,
   authMode: "logged-out",
   storageMode: "booting",
   configReady: false,
   refreshHandle: null,
   authSubscription: null,
-  searchQuery: ""
+  currentView: "overview",
+  activeViewTab: "overview",
+  selectedCategory: "phones",
+  assetSearch: "",
+  employeeSearch: "",
+  assignmentEmployeeSearch: "",
+  statusFilter: "all",
+  isLoading: false
 };
 
 const config = window.ASSET_APP_CONFIG || {};
@@ -50,38 +105,47 @@ const loginScreen = document.getElementById("login-screen");
 const appScreen = document.getElementById("app-screen");
 const loginForm = document.getElementById("login-form");
 const logoutButton = document.getElementById("logout-button");
-const employeeDialog = document.getElementById("employee-dialog");
-const phoneDialog = document.getElementById("phone-dialog");
-const simDialog = document.getElementById("sim-dialog");
-const employeeForm = document.getElementById("employee-form");
-const phoneForm = document.getElementById("phone-form");
-const simForm = document.getElementById("sim-form");
 const loginError = document.getElementById("login-error");
 const setupMessage = document.getElementById("setup-message");
 const storagePill = document.getElementById("storage-pill");
 const appMessage = document.getElementById("app-message");
 const localSessionButton = document.getElementById("local-session-button");
-const employeeSearchInput = document.getElementById("employee-search-input");
-const employeeSearchResult = document.getElementById("employee-search-result");
+const viewContainer = document.getElementById("view-container");
+const toastRegion = document.getElementById("toast-region");
+
+const employeeDialog = document.getElementById("employee-dialog");
+const assetDialog = document.getElementById("asset-dialog");
+const assignmentDialog = document.getElementById("assignment-dialog");
+const employeeForm = document.getElementById("employee-form");
+const assetForm = document.getElementById("asset-form");
+const assignmentForm = document.getElementById("assignment-form");
+const assetCategorySelect = document.getElementById("asset-category-select");
+const assetSerialLabel = document.getElementById("asset-serial-label");
+const assignmentEmployeeSelect = document.getElementById("assignment-employee-select");
+const assignmentEmployeeCodeInput = document.getElementById("assignment-employee-code");
+const assignmentEmployeeResult = document.getElementById("assignment-employee-result");
+const assignmentSummary = document.getElementById("assignment-summary");
 
 loginForm.addEventListener("submit", handleLogin);
 logoutButton.addEventListener("click", handleLogout);
-employeeForm.addEventListener("submit", handleEmployeeSave);
-phoneForm.addEventListener("submit", handlePhoneSave);
-simForm.addEventListener("submit", handleSimSave);
-document.body.addEventListener("click", handleBodyClick);
-document.addEventListener("visibilitychange", handleVisibilityRefresh);
 localSessionButton?.addEventListener("click", handleLocalSessionLogin);
-employeeSearchInput?.addEventListener("input", handleEmployeeSearch);
+employeeForm.addEventListener("submit", handleEmployeeSave);
+assetForm.addEventListener("submit", handleAssetSave);
+assignmentForm.addEventListener("submit", handleAssignmentSave);
+document.body.addEventListener("click", handleBodyClick);
+document.body.addEventListener("input", handleBodyInput);
+document.body.addEventListener("change", handleBodyChange);
+document.addEventListener("visibilitychange", handleVisibilityRefresh);
 
 initialize();
 
 async function initialize() {
   state.configReady = Boolean(supabaseClient);
+  populateCategorySelect();
   setLoggedOutMessage();
 
   if (isDemoMode) {
-    startLocalSession("demo@asset.local", "Storage: Local demo session", "Demo mode is using the bundled sample data in this browser.");
+    startLocalSession("demo@asset.local", "Storage: Local demo session", "Demo mode is using the bundled multi-asset sample data in this browser.");
     return;
   }
 
@@ -174,8 +238,8 @@ async function handleLogin(event) {
   hideLoginError();
 
   const formData = new FormData(event.currentTarget);
-  const email = formData.get("username").toString().trim();
-  const password = formData.get("password").toString().trim();
+  const email = String(formData.get("username") || "").trim();
+  const password = String(formData.get("password") || "").trim();
 
   if (!email || !email.includes("@")) {
     showLoginError("Enter a valid admin email address.");
@@ -194,10 +258,7 @@ async function handleLogin(event) {
   }
 
   try {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {
       showLoginError(`${error.message} You can still use the local browser session button below.`);
@@ -252,17 +313,13 @@ async function handleLogout() {
 }
 
 function startLocalSession(email, pillText, messageText) {
-  state.session = {
-    mode: "local",
-    user: { email }
-  };
+  state.session = { mode: "local", user: { email } };
   state.authMode = "local";
   state.storageMode = "local";
   writeStoredLocalSession({ email });
   hydrateLocalData();
   setStoragePill(pillText);
   showAppMessage(messageText);
-  hideLoginError();
   syncAuthView();
   renderApp();
 }
@@ -277,10 +334,10 @@ function restoreLocalSession(sessionData) {
 
 function hydrateLocalData() {
   const stored = readStoredLocalData();
-  const nextData = normalizeData(stored || cloneSeedData());
+  const nextData = normalizeData(stored || structuredClone(seedData));
   state.employees = nextData.employees;
-  state.phones = nextData.phones;
-  state.sims = nextData.sims;
+  state.assets = nextData.assets;
+  state.assignments = nextData.assignments;
   persistLocalData();
 }
 
@@ -289,16 +346,17 @@ async function loadCloudData(options = {}) {
     return false;
   }
 
+  setLoading(true, "Loading assets, employees, and assignments...");
   hideLoginError();
 
   try {
-    const [employeesResult, phonesResult, simsResult] = await Promise.all([
+    const [employeesResult, assetsResult, assignmentsResult] = await Promise.all([
       supabaseClient.from("employees").select("*").order("created_at", { ascending: false }),
-      supabaseClient.from("phones").select("*").order("created_at", { ascending: false }),
-      supabaseClient.from("sims").select("*").order("created_at", { ascending: false })
+      supabaseClient.from("assets").select("*").order("created_at", { ascending: false }),
+      supabaseClient.from("assignments").select("*").order("assigned_at", { ascending: false })
     ]);
 
-    const firstError = employeesResult.error || phonesResult.error || simsResult.error;
+    const firstError = employeesResult.error || assetsResult.error || assignmentsResult.error;
     if (firstError) {
       showAppMessage(`Cloud data is unavailable right now: ${firstError.message}. Falling back to local browser data.`);
       startCloudFallback();
@@ -306,9 +364,9 @@ async function loadCloudData(options = {}) {
     }
 
     const employees = employeesResult.data ?? [];
-    const phones = phonesResult.data ?? [];
-    const sims = simsResult.data ?? [];
-    const isEmpty = employees.length === 0 && phones.length === 0 && sims.length === 0;
+    const assets = assetsResult.data ?? [];
+    const assignments = assignmentsResult.data ?? [];
+    const isEmpty = employees.length === 0 && assets.length === 0 && assignments.length === 0;
 
     if (isEmpty && options.seedIfEmpty) {
       const seeded = await initializeDatabaseWithSeedData();
@@ -325,8 +383,8 @@ async function loadCloudData(options = {}) {
 
     state.storageMode = "cloud";
     state.employees = normalizeEmployees(employees);
-    state.phones = phones;
-    state.sims = sims;
+    state.assets = normalizeAssets(assets);
+    state.assignments = normalizeAssignments(assignments);
     setStoragePill("Storage: Supabase cloud");
     showAppMessage("Connected to Supabase cloud data.");
     renderApp();
@@ -336,6 +394,8 @@ async function loadCloudData(options = {}) {
     showAppMessage("Cloud data could not be loaded, so the app switched to local browser data.");
     startCloudFallback();
     return false;
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -344,6 +404,7 @@ function startCloudFallback() {
   hydrateLocalData();
   setStoragePill("Storage: Local browser fallback");
   renderApp();
+  setLoading(false);
 }
 
 async function initializeDatabaseWithSeedData() {
@@ -352,61 +413,84 @@ async function initializeDatabaseWithSeedData() {
   }
 
   try {
-    const { data: existingEmployees, error: existingEmployeesError } = await supabaseClient
-      .from("employees")
+    const { data: existingAssets, error: assetsCheckError } = await supabaseClient
+      .from("assets")
       .select("id")
       .limit(1);
 
-    if (existingEmployeesError) {
+    if (assetsCheckError) {
       return false;
     }
 
-    if (existingEmployees.length > 0) {
+    if ((existingAssets ?? []).length > 0) {
       return true;
     }
 
+    const employeeRows = seedData.employees.map((employee) => ({
+      name: employee.name,
+      employee_id: employee.employee_id,
+      email: employee.email,
+      department: employee.department,
+      notes: employee.notes
+    }));
+
     const { data: insertedEmployees, error: employeeError } = await supabaseClient
       .from("employees")
-      .insert(seedData.employees.map((employee) => ({
-        name: employee.name,
-        employee_id: employee.employee_id,
-        notes: employee.notes
-      })))
+      .insert(employeeRows)
       .select("id, employee_id");
 
     if (employeeError || !insertedEmployees) {
       return false;
     }
 
-    const employeeIdByCode = new Map(insertedEmployees.map((employee) => [employee.employee_id, employee.id]));
+    const employeeIdMap = new Map();
+    insertedEmployees.forEach((employee) => {
+      employeeIdMap.set(employee.employee_id, employee.id);
+    });
 
-    const { error: phoneError } = await supabaseClient
-      .from("phones")
-      .insert(seedData.phones.map((phone) => ({
-        model: phone.model,
-        imei: phone.imei,
-        notes: phone.notes,
-        employee_id: phone.employee_id
-          ? employeeIdByCode.get(seedData.employees.find((employee) => employee.id === phone.employee_id)?.employee_id || "")
-          : null
-      })));
+    const assetRows = seedData.assets.map((asset) => {
+      const seedEmployee = seedData.employees.find((employee) => employee.id === asset.assigned_employee_id);
+      return {
+        category: asset.category,
+        asset_name: asset.asset_name,
+        serial_number: asset.serial_number,
+        status: asset.status,
+        assigned_employee_id: seedEmployee ? employeeIdMap.get(seedEmployee.employee_id) : null,
+        notes: asset.notes
+      };
+    });
 
-    if (phoneError) {
+    const { data: insertedAssets, error: assetError } = await supabaseClient
+      .from("assets")
+      .insert(assetRows)
+      .select("id, serial_number");
+
+    if (assetError || !insertedAssets) {
       return false;
     }
 
-    const { error: simError } = await supabaseClient
-      .from("sims")
-      .insert(seedData.sims.map((sim) => ({
-        provider: sim.provider,
-        sim_number: sim.sim_number,
-        mobile_number: sim.mobile_number,
-        employee_id: sim.employee_id
-          ? employeeIdByCode.get(seedData.employees.find((employee) => employee.id === sim.employee_id)?.employee_id || "")
-          : null
-      })));
+    const assetIdMap = new Map();
+    insertedAssets.forEach((asset) => {
+      assetIdMap.set(asset.serial_number, asset.id);
+    });
 
-    return !simError;
+    const assignmentRows = seedData.assignments.map((assignment) => {
+      const seedAsset = seedData.assets.find((asset) => asset.id === assignment.asset_id);
+      const seedEmployee = seedData.employees.find((employee) => employee.id === assignment.employee_id);
+      return {
+        asset_id: seedAsset ? assetIdMap.get(seedAsset.serial_number) : null,
+        employee_id: seedEmployee ? employeeIdMap.get(seedEmployee.employee_id) : null,
+        assigned_at: assignment.assigned_at,
+        released_at: assignment.released_at,
+        notes: assignment.notes
+      };
+    }).filter((assignment) => assignment.asset_id && assignment.employee_id);
+
+    const { error: assignmentError } = await supabaseClient
+      .from("assignments")
+      .insert(assignmentRows);
+
+    return !assignmentError;
   } catch (error) {
     console.error("Cloud seed failed", error);
     return false;
@@ -442,315 +526,25 @@ function handleVisibilityRefresh() {
   }
 }
 
-function handleEmployeeSearch(event) {
-  state.searchQuery = event.currentTarget.value.trim();
-  renderEmployeeSearch();
-}
-
-function renderApp() {
-  renderStats();
-  renderEmployees();
-  renderPhones();
-  renderSims();
-  renderAssetLists();
-  renderEmployeeSearch();
-}
-
-function renderStats() {
-  const assignedPhones = state.phones.filter((phone) => phone.employee_id).length;
-  const availablePhones = state.phones.length - assignedPhones;
-  const assignedSims = state.sims.filter((sim) => sim.employee_id).length;
-  const availableSims = state.sims.length - assignedSims;
-
-  document.getElementById("total-phones").textContent = String(state.phones.length);
-  document.getElementById("assigned-phones").textContent = String(assignedPhones);
-  document.getElementById("available-phones").textContent = String(availablePhones);
-  document.getElementById("total-sims").textContent = String(state.sims.length);
-  document.getElementById("assigned-sims").textContent = String(assignedSims);
-  document.getElementById("available-sims").textContent = String(availableSims);
-}
-
-function renderEmployees() {
-  const body = document.getElementById("employees-table");
-  body.innerHTML = "";
-
-  if (state.employees.length === 0) {
-    body.append(createEmptyRow(5, "No employee assignments yet"));
-    return;
-  }
-
-  state.employees.forEach((employee) => {
-    const phones = getEmployeePhones(employee.id);
-    const sims = getEmployeeSims(employee.id);
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
-      <td>
-        ${escapeHtml(employee.name)}
-        <span class="muted-line">${escapeHtml(employee.notes || "No notes")}</span>
-      </td>
-      <td>${escapeHtml(employee.employee_id || "-")}</td>
-      <td>${renderAssetSummary(phones, "phone")}</td>
-      <td>${renderAssetSummary(sims, "sim")}</td>
-      <td>
-        <div class="table-actions">
-          <button type="button" class="table-button" data-edit-employee="${employee.id}">Edit</button>
-          <button type="button" class="table-button" data-release-employee="${employee.id}">Release all</button>
-        </div>
-      </td>
-    `;
-
-    body.append(row);
-  });
-}
-
-function renderPhones() {
-  const body = document.getElementById("phones-table");
-  body.innerHTML = "";
-
-  if (state.phones.length === 0) {
-    body.append(createEmptyRow(5, "No phones added yet"));
-    return;
-  }
-
-  state.phones.forEach((phone) => {
-    const employee = findEmployee(phone.employee_id);
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
-      <td>${escapeHtml(phone.model)}</td>
-      <td>${escapeHtml(phone.imei)}</td>
-      <td>${renderStatusBadge(Boolean(phone.employee_id))}</td>
-      <td>${employee ? escapeHtml(`${employee.name} (${employee.employee_id})`) : "-"}</td>
-      <td>
-        <div class="table-actions">
-          <button type="button" class="table-button" data-edit-phone="${phone.id}">Edit</button>
-          <button type="button" class="table-button" data-unassign-phone="${phone.id}" ${phone.employee_id ? "" : "disabled"}>Unassign</button>
-        </div>
-      </td>
-    `;
-
-    body.append(row);
-  });
-}
-
-function renderSims() {
-  const body = document.getElementById("sims-table");
-  body.innerHTML = "";
-
-  if (state.sims.length === 0) {
-    body.append(createEmptyRow(6, "No SIMs added yet"));
-    return;
-  }
-
-  state.sims.forEach((sim) => {
-    const employee = findEmployee(sim.employee_id);
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
-      <td>${escapeHtml(sim.provider)}</td>
-      <td>${escapeHtml(sim.sim_number)}</td>
-      <td>${escapeHtml(sim.mobile_number || "-")}</td>
-      <td>${renderStatusBadge(Boolean(sim.employee_id))}</td>
-      <td>${employee ? escapeHtml(`${employee.name} (${employee.employee_id})`) : "-"}</td>
-      <td>
-        <div class="table-actions">
-          <button type="button" class="table-button" data-edit-sim="${sim.id}">Edit</button>
-          <button type="button" class="table-button" data-unassign-sim="${sim.id}" ${sim.employee_id ? "" : "disabled"}>Unassign</button>
-        </div>
-      </td>
-    `;
-
-    body.append(row);
-  });
-}
-
-function renderAssetLists() {
-  const availablePhones = state.phones.filter((phone) => !phone.employee_id);
-  const assignedPhones = state.phones.filter((phone) => phone.employee_id);
-  const availableSims = state.sims.filter((sim) => !sim.employee_id);
-  const assignedSims = state.sims.filter((sim) => sim.employee_id);
-
-  renderList(
-    document.getElementById("available-phone-list"),
-    availablePhones,
-    (phone) => `
-      <span class="asset-main">${escapeHtml(phone.model)}</span>
-      <span class="asset-meta">IMEI: ${escapeHtml(phone.imei)}</span>
-    `,
-    "No available phones"
-  );
-
-  renderList(
-    document.getElementById("assigned-phone-list"),
-    assignedPhones,
-    (phone) => `
-      <span class="asset-main">${escapeHtml(phone.model)}</span>
-      <span class="asset-meta">IMEI: ${escapeHtml(phone.imei)} | ${escapeHtml(formatEmployeeLabel(findEmployee(phone.employee_id)))}</span>
-    `,
-    "No assigned phones"
-  );
-
-  renderList(
-    document.getElementById("available-sim-list"),
-    availableSims,
-    (sim) => `
-      <span class="asset-main">${escapeHtml(sim.sim_number)}</span>
-      <span class="asset-meta">${escapeHtml(sim.provider)} | ${escapeHtml(sim.mobile_number || "-")}</span>
-    `,
-    "No available SIMs"
-  );
-
-  renderList(
-    document.getElementById("assigned-sim-list"),
-    assignedSims,
-    (sim) => `
-      <span class="asset-main">${escapeHtml(sim.sim_number)}</span>
-      <span class="asset-meta">${escapeHtml(sim.provider)} | ${escapeHtml(formatEmployeeLabel(findEmployee(sim.employee_id)))}</span>
-    `,
-    "No assigned SIMs"
-  );
-}
-
-function renderEmployeeSearch() {
-  if (!employeeSearchResult) {
-    return;
-  }
-
-  const query = normalizeEmployeeCode(state.searchQuery);
-  if (!query) {
-    employeeSearchResult.className = "search-result empty-text";
-    employeeSearchResult.textContent = "Search by Employee ID to view assigned phones and SIMs.";
-    return;
-  }
-
-  const employee = findEmployeeByCode(query);
-  if (!employee) {
-    employeeSearchResult.className = "search-result empty-text";
-    employeeSearchResult.textContent = "No employee found";
-    return;
-  }
-
-  const phones = getEmployeePhones(employee.id);
-  const sims = getEmployeeSims(employee.id);
-  employeeSearchResult.className = "search-result";
-  employeeSearchResult.innerHTML = `
-    <div class="search-result-card">
-      <div class="search-result-head">
-        <div>
-          <div class="search-result-name">${escapeHtml(employee.name)}</div>
-          <div class="search-result-meta">Employee ID: ${escapeHtml(employee.employee_id || "-")}</div>
-        </div>
-        <div class="search-result-meta">${escapeHtml(employee.notes || "No notes")}</div>
-      </div>
-      <div class="search-result-grid">
-        <div class="mini-card">
-          <h3>Assigned phones</h3>
-          <ul class="asset-list">${renderSearchAssetItems(phones, "phone")}</ul>
-        </div>
-        <div class="mini-card">
-          <h3>Assigned SIMs</h3>
-          <ul class="asset-list">${renderSearchAssetItems(sims, "sim")}</ul>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderSearchAssetItems(items, type) {
-  if (items.length === 0) {
-    return '<li class="empty-text">None assigned</li>';
-  }
-
-  return items.map((item) => {
-    if (type === "phone") {
-      return `
-        <li>
-          <span class="asset-main">${escapeHtml(item.model)}</span>
-          <span class="asset-meta">IMEI: ${escapeHtml(item.imei)}</span>
-        </li>
-      `;
-    }
-
-    return `
-      <li>
-        <span class="asset-main">${escapeHtml(item.provider)}</span>
-        <span class="asset-meta">${escapeHtml(item.sim_number)} | ${escapeHtml(item.mobile_number || "-")}</span>
-      </li>
-    `;
-  }).join("");
-}
-
-function renderList(target, items, renderer, emptyText) {
-  target.innerHTML = "";
-
-  if (items.length === 0) {
-    const li = document.createElement("li");
-    li.className = "empty-text";
-    li.textContent = emptyText;
-    target.append(li);
-    return;
-  }
-
-  items.forEach((item) => {
-    const li = document.createElement("li");
-    li.innerHTML = renderer(item);
-    target.append(li);
-  });
-}
-
-function renderAssetSummary(items, type) {
-  if (items.length === 0) {
-    return "-";
-  }
-
-  return items.map((item) => {
-    if (type === "phone") {
-      return `
-        <div class="stack-item">
-          ${escapeHtml(item.model)}
-          <span class="muted-line">IMEI: ${escapeHtml(item.imei)}</span>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="stack-item">
-        ${escapeHtml(item.provider)}
-        <span class="muted-line">${escapeHtml(item.sim_number)}</span>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderStatusBadge(isAssigned) {
-  if (isAssigned) {
-    return '<span class="status-badge assigned">Assigned</span>';
-  }
-
-  return '<span class="status-badge available">Available</span>';
-}
-
 function handleBodyClick(event) {
   const target = event.target;
 
+  if (target.matches("[data-view]")) {
+    state.currentView = target.getAttribute("data-view");
+    state.activeViewTab = state.currentView;
+    renderApp();
+    return;
+  }
+
+  if (target.matches("[data-category]")) {
+    state.selectedCategory = target.getAttribute("data-category");
+    state.currentView = "category";
+    renderApp();
+    return;
+  }
+
   if (target.matches("[data-open-employee]")) {
     openEmployeeDialog();
-    return;
-  }
-
-  if (target.matches("[data-open-phone]")) {
-    openPhoneDialog();
-    return;
-  }
-
-  if (target.matches("[data-open-sim]")) {
-    openSimDialog();
-    return;
-  }
-
-  if (target.matches("[data-close-dialog]")) {
-    closeDialog(target.getAttribute("data-close-dialog"));
     return;
   }
 
@@ -759,476 +553,608 @@ function handleBodyClick(event) {
     return;
   }
 
-  if (target.matches("[data-edit-phone]")) {
-    openPhoneDialog(target.getAttribute("data-edit-phone"));
+  if (target.matches("[data-open-asset]")) {
+    openAssetDialog("", target.getAttribute("data-open-asset") || state.selectedCategory);
     return;
   }
 
-  if (target.matches("[data-edit-sim]")) {
-    openSimDialog(target.getAttribute("data-edit-sim"));
+  if (target.matches("[data-edit-asset]")) {
+    openAssetDialog(target.getAttribute("data-edit-asset"));
     return;
   }
 
-  if (target.matches("[data-release-employee]")) {
-    releaseEmployeeAssets(target.getAttribute("data-release-employee"));
+  if (target.matches("[data-assign-asset]")) {
+    openAssignmentDialog(target.getAttribute("data-assign-asset"));
     return;
   }
 
-  if (target.matches("[data-unassign-phone]")) {
-    unassignPhone(target.getAttribute("data-unassign-phone"));
+  if (target.matches("[data-release-asset]")) {
+    releaseAsset(target.getAttribute("data-release-asset"));
     return;
   }
 
-  if (target.matches("[data-unassign-sim]")) {
-    unassignSim(target.getAttribute("data-unassign-sim"));
+  if (target.matches("[data-close-dialog]")) {
+    closeDialog(target.getAttribute("data-close-dialog"));
   }
+}
+
+function handleBodyInput(event) {
+  const target = event.target;
+
+  if (target.id === "asset-search-input") {
+    state.assetSearch = target.value.trim();
+    updateCategorySearchResults();
+    return;
+  }
+
+  if (target.id === "employee-search-input") {
+    state.employeeSearch = normalizeEmployeeCode(target.value);
+    updateEmployeeSearchResults();
+    return;
+  }
+
+  if (target.id === "assignment-employee-code") {
+    state.assignmentEmployeeSearch = normalizeEmployeeCode(target.value);
+    syncAssignmentEmployeeSelection();
+    return;
+  }
+
+  if (target.name === "category") {
+    syncAssetSerialLabel(target.value);
+  }
+}
+
+function handleBodyChange(event) {
+  const target = event.target;
+
+  if (target.id === "asset-status-filter") {
+    state.statusFilter = target.value;
+    updateCategorySearchResults();
+  }
+}
+
+function renderApp() {
+  renderStats();
+  renderNavigation();
+  renderCurrentView();
+}
+
+function renderStats() {
+  const totals = getDashboardTotals();
+  document.getElementById("total-assets").textContent = String(totals.totalAssets);
+  document.getElementById("assigned-assets").textContent = String(totals.assignedAssets);
+  document.getElementById("available-assets").textContent = String(totals.availableAssets);
+  document.getElementById("total-employees").textContent = String(totals.totalEmployees);
+}
+
+function renderNavigation() {
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("active", button.getAttribute("data-view") === state.activeViewTab);
+  });
+
+  document.querySelectorAll("[data-category]").forEach((button) => {
+    button.classList.toggle("active", button.getAttribute("data-category") === state.selectedCategory && state.currentView === "category");
+  });
+}
+
+function renderCurrentView() {
+  if (state.isLoading) {
+    viewContainer.innerHTML = '<div class="loading-state">Loading dashboard data...</div>';
+    return;
+  }
+
+  if (state.currentView === "employees") {
+    viewContainer.innerHTML = renderEmployeesView();
+    return;
+  }
+
+  if (state.currentView === "history") {
+    viewContainer.innerHTML = renderHistoryView();
+    return;
+  }
+
+  if (state.currentView === "category") {
+    viewContainer.innerHTML = renderCategoryView();
+    return;
+  }
+
+  viewContainer.innerHTML = renderOverviewView();
+}
+
+function renderOverviewView() {
+  const categoryCards = CATEGORY_DEFINITIONS.map((category) => {
+    const assets = getAssetsByCategory(category.key);
+    const assigned = assets.filter((asset) => asset.status === "Assigned").length;
+    return `
+      <button type="button" class="category-summary-card" data-category="${category.key}">
+        <span class="eyebrow">${escapeHtml(category.label)}</span>
+        <strong>${assets.length}</strong>
+        <span class="muted-line">${assigned} assigned</span>
+      </button>
+    `;
+  }).join("");
+
+  const recentRows = getRecentAssignments(6).map((assignment) => renderAssignmentRow(assignment)).join("");
+
+  return `
+    <div class="dashboard-band">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Summary</p>
+          <h2>Assets by category</h2>
+        </div>
+      </div>
+      <div class="category-summary-grid">${categoryCards}</div>
+    </div>
+
+    <div class="dashboard-band">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Recent activity</p>
+          <h2>Recent assignments</h2>
+        </div>
+        <button type="button" class="secondary-button" data-view="history">View full history</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Category</th>
+              <th>Employee</th>
+              <th>Assigned</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${recentRows || createEmptyRowMarkup(5, "No assignments yet")}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderEmployeesView() {
+  return `
+    <div class="dashboard-band">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Employees</p>
+          <h2>Create and manage employees</h2>
+        </div>
+        <button type="button" class="secondary-button" data-open-employee>Create employee</button>
+      </div>
+      <div class="search-panel">
+        <label class="toolbar-field search-label">
+          Search by Employee ID
+          <input id="employee-search-input" type="search" placeholder="EMP-1001" value="${escapeHtml(state.employeeSearch)}" autocomplete="off">
+        </label>
+        <div id="employee-search-result-panel">${renderEmployeeSearchResult()}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Employee ID</th>
+              <th>Department</th>
+              <th>Assigned assets</th>
+              <th>Asset list</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employee-table-body">${renderEmployeeTableRows()}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderHistoryView() {
+  const rows = getRecentAssignments(100).map((assignment) => renderAssignmentRow(assignment)).join("");
+
+  return `
+    <div class="dashboard-band">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">History</p>
+          <h2>Assignment history</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Category</th>
+              <th>Employee</th>
+              <th>Assigned</th>
+              <th>Released</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows || createEmptyRowMarkup(6, "No assignment history yet")}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderCategoryView() {
+  const category = getCategoryDefinition(state.selectedCategory);
+  return `
+    <div class="dashboard-band">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Category view</p>
+          <h2>${escapeHtml(category.label)}</h2>
+        </div>
+        <button type="button" class="secondary-button" data-open-asset="${category.key}">Add asset</button>
+      </div>
+
+      <div class="toolbar-row">
+        <label class="toolbar-field">
+          Search
+          <input id="asset-search-input" type="search" placeholder="Search asset, serial, or Employee ID" value="${escapeHtml(state.assetSearch)}">
+        </label>
+        <label class="toolbar-field small">
+          Status
+          <select id="asset-status-filter">
+            <option value="all"${state.statusFilter === "all" ? " selected" : ""}>All</option>
+            <option value="available"${state.statusFilter === "available" ? " selected" : ""}>Available</option>
+            <option value="assigned"${state.statusFilter === "assigned" ? " selected" : ""}>Assigned</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="category-search-result-panel" class="search-result">${renderCategorySearchResult()}</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset name</th>
+              <th>${escapeHtml(category.serialLabel)}</th>
+              <th>Status</th>
+              <th>Assigned employee</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="category-table-body">${renderCategoryTableRows()}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderAssignmentRow(assignment) {
+  const asset = findAsset(assignment.asset_id);
+  const employee = findEmployee(assignment.employee_id);
+  const category = asset ? getCategoryDefinition(asset.category).label : "-";
+  const statusText = assignment.released_at ? "Released" : "Active";
+
+  return `
+    <tr>
+      <td>${escapeHtml(asset?.asset_name || "Unknown asset")}</td>
+      <td>${escapeHtml(category)}</td>
+      <td>${escapeHtml(employee ? formatEmployeeLabel(employee) : "Unknown employee")}</td>
+      <td>${escapeHtml(formatDateTime(assignment.assigned_at))}</td>
+      ${state.currentView === "history" ? `<td>${escapeHtml(assignment.released_at ? formatDateTime(assignment.released_at) : "-")}</td>` : ""}
+      <td>${statusText === "Active" ? renderStatusBadge(true) : '<span class="status-badge available">Released</span>'}</td>
+    </tr>
+  `;
 }
 
 function openEmployeeDialog(employeeId = "") {
   employeeForm.reset();
   employeeForm.elements.employeeId.value = employeeId;
-  document.getElementById("employee-dialog-title").textContent = employeeId ? "Edit employee assignment" : "Create employee assignment";
+  document.getElementById("employee-dialog-title").textContent = employeeId ? "Edit employee" : "Create employee";
 
   const employee = findEmployee(employeeId);
   if (employee) {
     employeeForm.elements.name.value = employee.name;
-    employeeForm.elements.employeeCode.value = employee.employee_id || "";
+    employeeForm.elements.employeeCode.value = employee.employee_id;
+    employeeForm.elements.email.value = employee.email || "";
+    employeeForm.elements.department.value = employee.department || "";
     employeeForm.elements.notes.value = employee.notes || "";
   }
 
-  renderEmployeeAssetOptions(employeeId);
   employeeDialog.showModal();
 }
 
-function renderEmployeeAssetOptions(employeeId) {
-  const phoneHost = document.getElementById("employee-phone-options");
-  const simHost = document.getElementById("employee-sim-options");
-  const employeePhoneIds = new Set(getEmployeePhones(employeeId).map((item) => item.id));
-  const employeeSimIds = new Set(getEmployeeSims(employeeId).map((item) => item.id));
+function openAssetDialog(assetId = "", categoryKey = state.selectedCategory) {
+  assetForm.reset();
+  assetForm.elements.assetId.value = assetId;
+  const asset = findAsset(assetId);
+  const selectedCategory = asset?.category || categoryKey;
 
-  phoneHost.innerHTML = "";
-  simHost.innerHTML = "";
+  assetCategorySelect.value = selectedCategory;
+  syncAssetSerialLabel(selectedCategory);
+  document.getElementById("asset-dialog-title").textContent = assetId ? "Edit asset" : "Add asset";
 
-  state.phones.forEach((phone) => {
-    const checked = employeePhoneIds.has(phone.id);
-    const disabled = Boolean(phone.employee_id) && phone.employee_id !== employeeId;
-    phoneHost.append(createCheckItem({
-      name: "phoneIds",
-      value: phone.id,
-      checked,
-      disabled,
-      title: phone.model,
-      subtitle: `IMEI: ${phone.imei}${phone.employee_id && !checked ? ` | ${formatEmployeeLabel(findEmployee(phone.employee_id))}` : ""}`
-    }));
-  });
-
-  state.sims.forEach((sim) => {
-    const checked = employeeSimIds.has(sim.id);
-    const disabled = Boolean(sim.employee_id) && sim.employee_id !== employeeId;
-    simHost.append(createCheckItem({
-      name: "simIds",
-      value: sim.id,
-      checked,
-      disabled,
-      title: `${sim.provider} - ${sim.sim_number}`,
-      subtitle: `${sim.mobile_number || "No mobile number"}${sim.employee_id && !checked ? ` | ${formatEmployeeLabel(findEmployee(sim.employee_id))}` : ""}`
-    }));
-  });
-}
-
-function createCheckItem(configItem) {
-  const label = document.createElement("label");
-  label.className = `check-item${configItem.disabled ? " disabled" : ""}`;
-  label.innerHTML = `
-    <input type="checkbox" name="${configItem.name}" value="${configItem.value}" ${configItem.checked ? "checked" : ""} ${configItem.disabled ? "disabled" : ""}>
-    <span>
-      <strong>${escapeHtml(configItem.title)}</strong>
-      <span class="muted-line">${escapeHtml(configItem.subtitle)}</span>
-    </span>
-  `;
-  return label;
-}
-
-function openPhoneDialog(phoneId = "") {
-  phoneForm.reset();
-  phoneForm.elements.phoneId.value = phoneId;
-  document.getElementById("phone-dialog-title").textContent = phoneId ? "Edit phone" : "Add phone";
-  const phone = findPhone(phoneId);
-
-  if (phone) {
-    phoneForm.elements.model.value = phone.model;
-    phoneForm.elements.imei.value = phone.imei;
-    phoneForm.elements.notes.value = phone.notes || "";
+  if (asset) {
+    assetForm.elements.assetName.value = asset.asset_name;
+    assetForm.elements.serialNumber.value = asset.serial_number;
+    assetForm.elements.notes.value = asset.notes || "";
   }
 
-  phoneDialog.showModal();
+  assetDialog.showModal();
 }
 
-function openSimDialog(simId = "") {
-  simForm.reset();
-  simForm.elements.simId.value = simId;
-  document.getElementById("sim-dialog-title").textContent = simId ? "Edit SIM" : "Add SIM";
-  const sim = findSim(simId);
-
-  if (sim) {
-    simForm.elements.provider.value = sim.provider;
-    simForm.elements.simNumber.value = sim.sim_number;
-    simForm.elements.mobileNumber.value = sim.mobile_number || "";
+function openAssignmentDialog(assetId) {
+  const asset = findAsset(assetId);
+  if (!asset) {
+    return;
   }
 
-  simDialog.showModal();
+  assignmentForm.reset();
+  assignmentForm.elements.assetId.value = assetId;
+  assignmentSummary.textContent = `${asset.asset_name} • ${getCategoryDefinition(asset.category).label}`;
+  assignmentEmployeeSelect.innerHTML = state.employees.map((employee) => `
+    <option value="${employee.id}">${escapeHtml(formatEmployeeLabel(employee))}</option>
+  `).join("");
+
+  assignmentDialog.showModal();
 }
 
 async function handleEmployeeSave(event) {
   event.preventDefault();
-  hideLoginError();
-
   const formData = new FormData(employeeForm);
-  const recordId = formData.get("employeeId").toString().trim();
-  const selectedPhoneIds = new Set(formData.getAll("phoneIds").map(String));
-  const selectedSimIds = new Set(formData.getAll("simIds").map(String));
-  const employeeCode = normalizeEmployeeCode(formData.get("employeeCode"));
-  const name = formData.get("name").toString().trim();
-  const notes = formData.get("notes").toString().trim();
+  const employeeId = String(formData.get("employeeId") || "").trim();
+  const payload = {
+    id: employeeId || createId("emp"),
+    name: String(formData.get("name") || "").trim(),
+    employee_id: normalizeEmployeeCode(formData.get("employeeCode")),
+    email: String(formData.get("email") || "").trim(),
+    department: String(formData.get("department") || "").trim(),
+    notes: String(formData.get("notes") || "").trim()
+  };
 
-  const duplicateEmployee = state.employees.find((employee) => employee.employee_id === employeeCode && employee.id !== recordId);
-  if (!employeeCode) {
-    showAppMessage("Employee ID is required.");
+  if (!payload.name || !payload.employee_id) {
+    toast("Employee name and Employee ID are required.", "error");
     return;
   }
 
-  if (duplicateEmployee) {
-    showAppMessage("Employee ID must be unique.");
+  const duplicate = state.employees.find((employee) => employee.employee_id === payload.employee_id && employee.id !== payload.id);
+  if (duplicate) {
+    toast("Employee ID must be unique.", "error");
     return;
   }
 
   if (isCloudMode()) {
-    const employeePayload = {
-      name,
-      employee_id: employeeCode,
-      notes
+    const cloudPayload = {
+      name: payload.name,
+      employee_id: payload.employee_id,
+      email: payload.email,
+      department: payload.department,
+      notes: payload.notes
     };
-
-    if (recordId) {
-      employeePayload.id = recordId;
-    }
-
-    const { data: employeeRows, error: employeeError } = await supabaseClient
-      .from("employees")
-      .upsert(employeePayload)
-      .select();
-
-    if (employeeError) {
-      showAppMessage(employeeError.message);
+    const query = employeeId
+      ? supabaseClient.from("employees").update(cloudPayload).eq("id", employeeId)
+      : supabaseClient.from("employees").insert(cloudPayload);
+    const { error } = await query;
+    if (error) {
+      toast(error.message, "error");
       return;
     }
-
-    const savedEmployeeId = employeeRows[0].id;
-    const phoneUpdates = state.phones
-      .filter((phone) => phone.employee_id === savedEmployeeId || selectedPhoneIds.has(phone.id))
-      .map((phone) => ({
-        id: phone.id,
-        model: phone.model,
-        imei: phone.imei,
-        notes: phone.notes || "",
-        employee_id: selectedPhoneIds.has(phone.id) ? savedEmployeeId : null
-      }));
-
-    const simUpdates = state.sims
-      .filter((sim) => sim.employee_id === savedEmployeeId || selectedSimIds.has(sim.id))
-      .map((sim) => ({
-        id: sim.id,
-        provider: sim.provider,
-        sim_number: sim.sim_number,
-        mobile_number: sim.mobile_number || "",
-        employee_id: selectedSimIds.has(sim.id) ? savedEmployeeId : null
-      }));
-
-    if (phoneUpdates.length > 0) {
-      const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
-      if (error) {
-        showAppMessage(error.message);
-        return;
-      }
-    }
-
-    if (simUpdates.length > 0) {
-      const { error } = await supabaseClient.from("sims").upsert(simUpdates);
-      if (error) {
-        showAppMessage(error.message);
-        return;
-      }
-    }
-
-    closeDialog("employee-dialog");
     await loadCloudData({ seedIfEmpty: false });
-    return;
+  } else {
+    saveEmployeeLocally(payload);
   }
 
-  saveEmployeeLocally({
-    id: recordId,
-    employee_id: employeeCode,
-    name,
-    notes,
-    selectedPhoneIds,
-    selectedSimIds
-  });
   closeDialog("employee-dialog");
+  toast("Employee saved.", "success");
 }
 
-async function handlePhoneSave(event) {
+async function handleAssetSave(event) {
   event.preventDefault();
-  hideLoginError();
-
-  const formData = new FormData(phoneForm);
-  const phoneId = formData.get("phoneId").toString().trim();
+  const formData = new FormData(assetForm);
+  const assetId = String(formData.get("assetId") || "").trim();
+  const existing = assetId ? findAsset(assetId) : null;
   const payload = {
-    model: formData.get("model").toString().trim(),
-    imei: formData.get("imei").toString().trim(),
-    notes: formData.get("notes").toString().trim()
+    id: assetId || createId("ast"),
+    category: String(formData.get("category") || "").trim(),
+    asset_name: String(formData.get("assetName") || "").trim(),
+    serial_number: String(formData.get("serialNumber") || "").trim(),
+    status: existing?.status || "Available",
+    assigned_employee_id: existing?.assigned_employee_id || null,
+    notes: String(formData.get("notes") || "").trim()
   };
 
-  if (isCloudMode()) {
-    if (phoneId) {
-      payload.id = phoneId;
-      payload.employee_id = findPhone(phoneId)?.employee_id ?? null;
-    }
-
-    const { error } = await supabaseClient.from("phones").upsert(payload);
-    if (error) {
-      showAppMessage(error.message);
-      return;
-    }
-
-    closeDialog("phone-dialog");
-    await loadCloudData({ seedIfEmpty: false });
+  if (!payload.asset_name || !payload.serial_number || !payload.category) {
+    toast("Asset name, category, and serial are required.", "error");
     return;
   }
 
-  savePhoneLocally(phoneId, payload);
-  closeDialog("phone-dialog");
-}
-
-async function handleSimSave(event) {
-  event.preventDefault();
-  hideLoginError();
-
-  const formData = new FormData(simForm);
-  const simId = formData.get("simId").toString().trim();
-  const payload = {
-    provider: formData.get("provider").toString().trim(),
-    sim_number: formData.get("simNumber").toString().trim(),
-    mobile_number: formData.get("mobileNumber").toString().trim()
-  };
+  const duplicate = state.assets.find((asset) => asset.serial_number === payload.serial_number && asset.id !== payload.id);
+  if (duplicate) {
+    toast("Serial / IMEI must be unique.", "error");
+    return;
+  }
 
   if (isCloudMode()) {
-    if (simId) {
-      payload.id = simId;
-      payload.employee_id = findSim(simId)?.employee_id ?? null;
-    }
-
-    const { error } = await supabaseClient.from("sims").upsert(payload);
-    if (error) {
-      showAppMessage(error.message);
-      return;
-    }
-
-    closeDialog("sim-dialog");
-    await loadCloudData({ seedIfEmpty: false });
-    return;
-  }
-
-  saveSimLocally(simId, payload);
-  closeDialog("sim-dialog");
-}
-
-async function releaseEmployeeAssets(employeeId) {
-  if (isCloudMode()) {
-    const phoneUpdates = getEmployeePhones(employeeId).map((phone) => ({
-      id: phone.id,
-      model: phone.model,
-      imei: phone.imei,
-      notes: phone.notes || "",
-      employee_id: null
-    }));
-    const simUpdates = getEmployeeSims(employeeId).map((sim) => ({
-      id: sim.id,
-      provider: sim.provider,
-      sim_number: sim.sim_number,
-      mobile_number: sim.mobile_number || "",
-      employee_id: null
-    }));
-
-    if (phoneUpdates.length > 0) {
-      const { error } = await supabaseClient.from("phones").upsert(phoneUpdates);
-      if (error) {
-        showAppMessage(error.message);
-        return;
-      }
-    }
-
-    if (simUpdates.length > 0) {
-      const { error } = await supabaseClient.from("sims").upsert(simUpdates);
-      if (error) {
-        showAppMessage(error.message);
-        return;
-      }
-    }
-
-    await loadCloudData({ seedIfEmpty: false });
-    return;
-  }
-
-  state.phones.forEach((phone) => {
-    if (phone.employee_id === employeeId) {
-      phone.employee_id = null;
-    }
-  });
-
-  state.sims.forEach((sim) => {
-    if (sim.employee_id === employeeId) {
-      sim.employee_id = null;
-    }
-  });
-
-  persistLocalData();
-  renderApp();
-}
-
-async function unassignPhone(phoneId) {
-  if (isCloudMode()) {
-    const { error } = await supabaseClient.from("phones").update({ employee_id: null }).eq("id", phoneId);
-    if (error) {
-      showAppMessage(error.message);
-      return;
-    }
-
-    await loadCloudData({ seedIfEmpty: false });
-    return;
-  }
-
-  const phone = findPhone(phoneId);
-  if (!phone) {
-    return;
-  }
-
-  phone.employee_id = null;
-  persistLocalData();
-  renderApp();
-}
-
-async function unassignSim(simId) {
-  if (isCloudMode()) {
-    const { error } = await supabaseClient.from("sims").update({ employee_id: null }).eq("id", simId);
-    if (error) {
-      showAppMessage(error.message);
-      return;
-    }
-
-    await loadCloudData({ seedIfEmpty: false });
-    return;
-  }
-
-  const sim = findSim(simId);
-  if (!sim) {
-    return;
-  }
-
-  sim.employee_id = null;
-  persistLocalData();
-  renderApp();
-}
-
-function saveEmployeeLocally(details) {
-  let employee = details.id ? findEmployee(details.id) : null;
-  const employeeRecordId = employee?.id || createId("emp");
-
-  if (employee) {
-    employee.name = details.name;
-    employee.employee_id = details.employee_id;
-    employee.notes = details.notes;
-  } else {
-    employee = {
-      id: employeeRecordId,
-      employee_id: details.employee_id,
-      name: details.name,
-      notes: details.notes
+    const cloudPayload = {
+      category: payload.category,
+      asset_name: payload.asset_name,
+      serial_number: payload.serial_number,
+      status: payload.status,
+      assigned_employee_id: payload.assigned_employee_id,
+      notes: payload.notes
     };
-    state.employees.unshift(employee);
+
+    const query = assetId
+      ? supabaseClient.from("assets").update(cloudPayload).eq("id", assetId)
+      : supabaseClient.from("assets").insert(cloudPayload);
+    const { error } = await query;
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
+    await loadCloudData({ seedIfEmpty: false });
+  } else {
+    saveAssetLocally(payload);
   }
 
-  state.phones.forEach((phone) => {
-    if (phone.employee_id === employeeRecordId && !details.selectedPhoneIds.has(phone.id)) {
-      phone.employee_id = null;
+  closeDialog("asset-dialog");
+  toast("Asset saved.", "success");
+}
+
+async function handleAssignmentSave(event) {
+  event.preventDefault();
+  const formData = new FormData(assignmentForm);
+  const assetId = String(formData.get("assetId") || "").trim();
+  const employeeId = String(formData.get("employeeId") || "").trim();
+  const note = String(formData.get("assignmentNote") || "").trim();
+  const now = new Date().toISOString();
+
+  if (!assetId || !employeeId) {
+    toast("Choose an employee to assign this asset.", "error");
+    return;
+  }
+
+  if (isCloudMode()) {
+    await releaseAssetCloud(assetId, false);
+    const { error: assignmentError } = await supabaseClient.from("assignments").insert({
+      asset_id: assetId,
+      employee_id: employeeId,
+      assigned_at: now,
+      released_at: null,
+      notes: note
+    });
+
+    if (assignmentError) {
+      toast(assignmentError.message, "error");
+      return;
     }
 
-    if (details.selectedPhoneIds.has(phone.id)) {
-      phone.employee_id = employeeRecordId;
-    }
-  });
+    const { error: assetError } = await supabaseClient
+      .from("assets")
+      .update({ status: "Assigned", assigned_employee_id: employeeId })
+      .eq("id", assetId);
 
-  state.sims.forEach((sim) => {
-    if (sim.employee_id === employeeRecordId && !details.selectedSimIds.has(sim.id)) {
-      sim.employee_id = null;
+    if (assetError) {
+      toast(assetError.message, "error");
+      return;
     }
 
-    if (details.selectedSimIds.has(sim.id)) {
-      sim.employee_id = employeeRecordId;
-    }
-  });
+    await loadCloudData({ seedIfEmpty: false });
+  } else {
+    assignAssetLocally(assetId, employeeId, note, now);
+  }
 
+  closeDialog("assignment-dialog");
+  toast("Asset assigned.", "success");
+}
+
+async function releaseAsset(assetId) {
+  if (isCloudMode()) {
+    await releaseAssetCloud(assetId, true);
+    return;
+  }
+
+  releaseAssetLocally(assetId);
+  toast("Asset released.", "success");
+}
+
+async function releaseAssetCloud(assetId, notifyUser) {
+  const activeAssignment = findActiveAssignmentByAsset(assetId);
+  if (activeAssignment) {
+    const { error: assignmentError } = await supabaseClient
+      .from("assignments")
+      .update({ released_at: new Date().toISOString() })
+      .eq("id", activeAssignment.id);
+
+    if (assignmentError) {
+      toast(assignmentError.message, "error");
+      return;
+    }
+  }
+
+  const { error: assetError } = await supabaseClient
+    .from("assets")
+    .update({ status: "Available", assigned_employee_id: null })
+    .eq("id", assetId);
+
+  if (assetError) {
+    toast(assetError.message, "error");
+    return;
+  }
+
+  await loadCloudData({ seedIfEmpty: false });
+  if (notifyUser) {
+    toast("Asset released.", "success");
+  }
+}
+
+function saveEmployeeLocally(payload) {
+  const existingIndex = state.employees.findIndex((employee) => employee.id === payload.id);
+  if (existingIndex >= 0) {
+    state.employees[existingIndex] = { ...state.employees[existingIndex], ...payload };
+  } else {
+    state.employees.unshift(payload);
+  }
   persistLocalData();
   renderApp();
 }
 
-function savePhoneLocally(phoneId, payload) {
-  const existing = phoneId ? findPhone(phoneId) : null;
-
-  if (existing) {
-    existing.model = payload.model;
-    existing.imei = payload.imei;
-    existing.notes = payload.notes;
+function saveAssetLocally(payload) {
+  const existingIndex = state.assets.findIndex((asset) => asset.id === payload.id);
+  if (existingIndex >= 0) {
+    state.assets[existingIndex] = { ...state.assets[existingIndex], ...payload };
   } else {
-    state.phones.unshift({
-      id: createId("ph"),
-      model: payload.model,
-      imei: payload.imei,
-      notes: payload.notes,
-      employee_id: null
-    });
+    state.assets.unshift(payload);
   }
-
   persistLocalData();
   renderApp();
 }
 
-function saveSimLocally(simId, payload) {
-  const existing = simId ? findSim(simId) : null;
-
-  if (existing) {
-    existing.provider = payload.provider;
-    existing.sim_number = payload.sim_number;
-    existing.mobile_number = payload.mobile_number;
-  } else {
-    state.sims.unshift({
-      id: createId("sim"),
-      provider: payload.provider,
-      sim_number: payload.sim_number,
-      mobile_number: payload.mobile_number,
-      employee_id: null
-    });
+function assignAssetLocally(assetId, employeeId, note, timestamp) {
+  const asset = findAsset(assetId);
+  if (!asset) {
+    return;
   }
 
+  releaseAssetLocally(assetId, false);
+  state.assignments.unshift({
+    id: createId("asn"),
+    asset_id: assetId,
+    employee_id: employeeId,
+    assigned_at: timestamp,
+    released_at: null,
+    notes: note
+  });
+  asset.status = "Assigned";
+  asset.assigned_employee_id = employeeId;
   persistLocalData();
   renderApp();
+}
+
+function releaseAssetLocally(assetId, notifyUser = true) {
+  const asset = findAsset(assetId);
+  if (!asset) {
+    return;
+  }
+
+  const activeAssignment = findActiveAssignmentByAsset(assetId);
+  if (activeAssignment) {
+    activeAssignment.released_at = new Date().toISOString();
+  }
+
+  asset.status = "Available";
+  asset.assigned_employee_id = null;
+  persistLocalData();
+  renderApp();
+
+  if (notifyUser) {
+    toast("Asset released.", "success");
+  }
 }
 
 function persistLocalData() {
   try {
     sessionStorage.setItem(STORAGE_KEYS.localData, JSON.stringify({
       employees: state.employees,
-      phones: state.phones,
-      sims: state.sims
+      assets: state.assets,
+      assignments: state.assignments
     }));
   } catch (error) {
     console.error("Failed to persist local data", error);
@@ -1238,11 +1164,7 @@ function persistLocalData() {
 function readStoredLocalData() {
   try {
     const rawValue = sessionStorage.getItem(STORAGE_KEYS.localData);
-    if (!rawValue) {
-      return null;
-    }
-
-    return normalizeData(JSON.parse(rawValue));
+    return rawValue ? JSON.parse(rawValue) : null;
   } catch (error) {
     console.error("Failed to read local data", error);
     return null;
@@ -1273,43 +1195,434 @@ function clearStoredLocalSession() {
 
 function clearWorkingData() {
   state.employees = [];
-  state.phones = [];
-  state.sims = [];
+  state.assets = [];
+  state.assignments = [];
   renderApp();
 }
 
 function normalizeData(rawData) {
-  if (!rawData || !Array.isArray(rawData.employees) || !Array.isArray(rawData.phones) || !Array.isArray(rawData.sims)) {
-    return null;
+  if (!rawData || !Array.isArray(rawData.employees) || !Array.isArray(rawData.assets) || !Array.isArray(rawData.assignments)) {
+    return structuredClone(seedData);
   }
 
   return {
     employees: normalizeEmployees(rawData.employees),
-    phones: rawData.phones,
-    sims: rawData.sims
+    assets: normalizeAssets(rawData.assets),
+    assignments: normalizeAssignments(rawData.assignments)
   };
 }
 
 function normalizeEmployees(employees) {
   return employees.map((employee, index) => ({
-    ...employee,
-    employee_id: resolveEmployeeCode(employee, index),
+    id: employee.id || createId("emp"),
+    name: employee.name || "Unnamed employee",
+    employee_id: normalizeEmployeeCode(employee.employee_id || `EMP-${String(index + 1001).padStart(4, "0")}`),
+    email: employee.email || "",
+    department: employee.department || "",
     notes: employee.notes || ""
   }));
 }
 
-function generateEmployeeCode(index) {
-  return `EMP-${String(index + 1001).padStart(4, "0")}`;
+function normalizeAssets(assets) {
+  return assets.map((asset) => ({
+    id: asset.id || createId("ast"),
+    category: normalizeCategoryKey(asset.category, asset.asset_name, asset.notes),
+    asset_name: asset.asset_name || "Unnamed asset",
+    serial_number: asset.serial_number || "",
+    status: asset.status === "Assigned" ? "Assigned" : "Available",
+    assigned_employee_id: asset.assigned_employee_id || null,
+    notes: asset.notes || ""
+  }));
 }
 
-function resolveEmployeeCode(employee, index) {
-  const existingCode = normalizeEmployeeCode(employee.employee_id);
-  const legacyDepartment = normalizeEmployeeCode(employee.department);
-  if (existingCode && existingCode !== legacyDepartment) {
-    return existingCode;
+function normalizeAssignments(assignments) {
+  return assignments.map((assignment) => ({
+    id: assignment.id || createId("asn"),
+    asset_id: assignment.asset_id,
+    employee_id: assignment.employee_id,
+    assigned_at: assignment.assigned_at || new Date().toISOString(),
+    released_at: assignment.released_at || null,
+    notes: assignment.notes || ""
+  })).sort((left, right) => new Date(right.assigned_at) - new Date(left.assigned_at));
+}
+
+function getDashboardTotals() {
+  const assignedAssets = state.assets.filter((asset) => asset.status === "Assigned").length;
+  return {
+    totalAssets: state.assets.length,
+    assignedAssets,
+    availableAssets: state.assets.length - assignedAssets,
+    totalEmployees: state.employees.length
+  };
+}
+
+function getAssetsByCategory(categoryKey) {
+  return state.assets.filter((asset) => asset.category === categoryKey);
+}
+
+function getFilteredCategoryAssets(categoryKey) {
+  const query = state.assetSearch.toLowerCase();
+  return getAssetsByCategory(categoryKey).filter((asset) => {
+    const employee = findEmployee(asset.assigned_employee_id);
+    const employeeLabel = employee ? formatEmployeeLabel(employee).toLowerCase() : "";
+    const matchesQuery = !query
+      || asset.asset_name.toLowerCase().includes(query)
+      || asset.serial_number.toLowerCase().includes(query)
+      || employeeLabel.includes(query);
+
+    const matchesStatus = state.statusFilter === "all"
+      || (state.statusFilter === "available" && asset.status === "Available")
+      || (state.statusFilter === "assigned" && asset.status === "Assigned");
+
+    return matchesQuery && matchesStatus;
+  });
+}
+
+function getEmployeeAssets(employeeId) {
+  return state.assets.filter((asset) => asset.assigned_employee_id === employeeId);
+}
+
+function getRecentAssignments(limit) {
+  return [...state.assignments]
+    .sort((left, right) => new Date(right.assigned_at) - new Date(left.assigned_at))
+    .slice(0, limit);
+}
+
+function findEmployee(employeeId) {
+  return state.employees.find((employee) => employee.id === employeeId);
+}
+
+function findAsset(assetId) {
+  return state.assets.find((asset) => asset.id === assetId);
+}
+
+function findActiveAssignmentByAsset(assetId) {
+  return state.assignments.find((assignment) => assignment.asset_id === assetId && !assignment.released_at);
+}
+
+function getCategoryDefinition(categoryKey) {
+  return CATEGORY_DEFINITIONS.find((category) => category.key === categoryKey) || CATEGORY_DEFINITIONS[0];
+}
+
+function normalizeCategoryKey(categoryKey, assetName = "", notes = "") {
+  const normalizedKey = String(categoryKey || "").trim().toLowerCase();
+  const assetText = `${assetName} ${notes}`.toLowerCase();
+
+  if (normalizedKey === "phones-sims") {
+    return /\bsim\b/.test(assetText) ? "sims" : "phones";
   }
 
-  return normalizeEmployeeCode(generateEmployeeCode(index));
+  if (normalizedKey === "laptops-chargers") {
+    return /\bcharger\b|\b65w\b|\badapter\b|\bpower\b/.test(assetText) ? "chargers" : "laptops";
+  }
+
+  if (CATEGORY_DEFINITIONS.some((category) => category.key === normalizedKey)) {
+    return normalizedKey;
+  }
+
+  return "phones";
+}
+
+function populateCategorySelect() {
+  assetCategorySelect.innerHTML = CATEGORY_DEFINITIONS.map((category) => `
+    <option value="${category.key}">${escapeHtml(category.label)}</option>
+  `).join("");
+  syncAssetSerialLabel(assetCategorySelect.value || CATEGORY_DEFINITIONS[0].key);
+}
+
+function syncAssetSerialLabel(categoryKey) {
+  assetSerialLabel.textContent = getCategoryDefinition(categoryKey).serialLabel;
+}
+
+function getFilteredEmployees() {
+  if (!state.employeeSearch) {
+    return state.employees;
+  }
+
+  return state.employees.filter((employee) => normalizeEmployeeCode(employee.employee_id).includes(state.employeeSearch));
+}
+
+function renderEmployeeTableRows() {
+  const filteredEmployees = getFilteredEmployees();
+  const rows = filteredEmployees.map((employee) => {
+    const assignedAssets = getEmployeeAssets(employee.id);
+    return `
+      <tr>
+        <td>
+          ${escapeHtml(employee.name)}
+          <span class="muted-line">${escapeHtml(employee.email || "No email")}</span>
+        </td>
+        <td>${escapeHtml(employee.employee_id)}</td>
+        <td>${escapeHtml(employee.department || "-")}</td>
+        <td>${assignedAssets.length}</td>
+        <td>${assignedAssets.length ? assignedAssets.map((asset) => escapeHtml(asset.asset_name)).join(", ") : "-"}</td>
+        <td>
+          <div class="table-actions">
+            <button type="button" class="table-button" data-edit-employee="${employee.id}">Edit</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  return rows || createEmptyRowMarkup(6, state.employeeSearch ? "No employee matches that Employee ID" : "No employees added yet");
+}
+
+function renderCategoryTableRows() {
+  const assets = getFilteredCategoryAssets(state.selectedCategory);
+  const rows = assets.map((asset) => {
+    const employee = findEmployee(asset.assigned_employee_id);
+    return `
+      <tr>
+        <td>${escapeHtml(asset.asset_name)}</td>
+        <td>${escapeHtml(asset.serial_number)}</td>
+        <td>${renderStatusBadge(asset.status === "Assigned")}</td>
+        <td>${employee ? escapeHtml(formatEmployeeLabel(employee)) : "-"}</td>
+        <td>
+          <div class="table-actions">
+            <button type="button" class="table-button" data-edit-asset="${asset.id}">Edit</button>
+            ${asset.status === "Assigned"
+              ? `<button type="button" class="table-button" data-release-asset="${asset.id}">Release</button>`
+              : `<button type="button" class="table-button" data-assign-asset="${asset.id}">Assign</button>`}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  return rows || createEmptyRowMarkup(5, "No assets in this category yet");
+}
+
+function findEmployeeByCode(employeeCode) {
+  const normalizedCode = normalizeEmployeeCode(employeeCode);
+  if (!normalizedCode) {
+    return null;
+  }
+
+  return state.employees.find((employee) => normalizeEmployeeCode(employee.employee_id) === normalizedCode) || null;
+}
+
+function renderEmployeeSearchResult() {
+  if (!state.employeeSearch) {
+    return `<div class="search-result">
+      Enter an Employee ID to load employee details and assigned assets.
+    </div>`;
+  }
+
+  const matches = getFilteredEmployees();
+
+  if (!matches.length) {
+    return `<div class="search-result">
+      No employee found for <strong>${escapeHtml(state.employeeSearch)}</strong>.
+    </div>`;
+  }
+
+  return matches.map((employee) => {
+    const assignedAssets = getEmployeeAssets(employee.id);
+
+    const assignedAssetMarkup = assignedAssets.length
+      ? assignedAssets.map((asset) => `
+          <li>
+            ${escapeHtml(asset.asset_name)}
+            <span class="muted-line">
+              ${escapeHtml(getCategoryDefinition(asset.category).label)} • ${escapeHtml(asset.serial_number)}
+            </span>
+          </li>
+        `).join("")
+      : "<li>No assets assigned right now.</li>";
+
+    return `
+      <div class="search-result">
+        <div class="search-result-card">
+          <div class="search-result-head">
+            <div>
+              <div class="search-result-name">${escapeHtml(employee.name)}</div>
+              <div class="search-result-meta">
+                ${escapeHtml(employee.employee_id)} • ${escapeHtml(employee.department || "No department")}
+              </div>
+            </div>
+            <span class="status-badge ${assignedAssets.length ? "assigned" : "available"}">
+              ${assignedAssets.length ? `${assignedAssets.length} assigned` : "No assigned assets"}
+            </span>
+          </div>
+
+          <div class="search-result-grid">
+            <div class="mini-card">
+              <h3>Employee details</h3>
+              <div class="search-result-meta">
+                ${escapeHtml(employee.email || "No email added")}
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <h3>Assigned assets</h3>
+              <ul class="asset-list">
+                ${assignedAssetMarkup}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+  return matches.map((employee) => {
+    const assignedAssets = getEmployeeAssets(employee.id);
+    const assignedAssetMarkup = assignedAssets.length
+      ? assignedAssets.map((asset) => `<li>${escapeHtml(asset.asset_name)} <span class="muted-line">${escapeHtml(getCategoryDefinition(asset.category).label)} • ${escapeHtml(asset.serial_number)}</span></li>`).join("")
+      : "<li>No assets assigned right now.</li>";
+
+    return `
+      <div class="search-result">
+        <div class="search-result-card">
+          <div class="search-result-head">
+            <div>
+              <div class="search-result-name">${escapeHtml(employee.name)}</div>
+              <div class="search-result-meta">${escapeHtml(employee.employee_id)} • ${escapeHtml(employee.department || "No department")}</div>
+            </div>
+            <span class="status-badge ${assignedAssets.length ? "assigned" : "available"}">${assignedAssets.length ? `${assignedAssets.length} assigned` : "No assigned assets"}</span>
+          </div>
+          <div class="search-result-grid">
+            <div class="mini-card">
+              <h3>Employee details</h3>
+              <div class="search-result-meta">${escapeHtml(employee.email || "No email added")}</div>
+            </div>
+            <div class="mini-card">
+              <h3>Assigned assets</h3>
+              <ul class="asset-list">${assignedAssetMarkup}</ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderCategorySearchResult() {
+  if (!state.assetSearch) {
+    return "Search by asset name, serial number, or assigned Employee ID.";
+  }
+
+  const matches = getFilteredCategoryAssets(state.selectedCategory);
+  if (!matches.length) {
+    return `No assets found for "${escapeHtml(state.assetSearch)}" in ${escapeHtml(getCategoryDefinition(state.selectedCategory).label)}.`;
+  }
+
+  if (matches.length === 1) {
+    const asset = matches[0];
+    const employee = findEmployee(asset.assigned_employee_id);
+    return `${escapeHtml(asset.asset_name)} • ${escapeHtml(asset.serial_number)}${employee ? ` • ${escapeHtml(formatEmployeeLabel(employee))}` : " • Unassigned"}`;
+  }
+
+  return `${matches.length} assets found in ${escapeHtml(getCategoryDefinition(state.selectedCategory).label)}. You can search by asset name, serial number, or Employee ID.`;
+}
+
+function syncAssignmentEmployeeSelection() {
+  if (!assignmentEmployeeResult || !assignmentEmployeeSelect) {
+    return;
+  }
+
+  const matchedEmployee = findEmployeeByCode(state.assignmentEmployeeSearch);
+  if (!state.assignmentEmployeeSearch) {
+    assignmentEmployeeSelect.value = "";
+    assignmentEmployeeResult.textContent = "Enter an Employee ID to load the employee name.";
+    return;
+  }
+
+  if (!matchedEmployee) {
+    assignmentEmployeeSelect.value = "";
+    assignmentEmployeeResult.textContent = `No employee found for ${state.assignmentEmployeeSearch}.`;
+    return;
+  }
+
+  assignmentEmployeeSelect.value = matchedEmployee.id;
+  assignmentEmployeeResult.innerHTML = `
+    <div class="search-result-card">
+      <div class="search-result-name">${escapeHtml(matchedEmployee.name)}</div>
+      <div class="search-result-meta">${escapeHtml(matchedEmployee.employee_id)} • ${escapeHtml(matchedEmployee.department || "No department")}</div>
+    </div>
+  `;
+}
+
+function renderEmployeesView() {
+  const filteredEmployees = getFilteredEmployees();
+  const rows = filteredEmployees.map((employee) => {
+    const assignedAssets = getEmployeeAssets(employee.id);
+    return `
+      <tr>
+        <td>
+          ${escapeHtml(employee.name)}
+          <span class="muted-line">${escapeHtml(employee.email || "No email")}</span>
+        </td>
+        <td>${escapeHtml(employee.employee_id)}</td>
+        <td>${escapeHtml(employee.department || "-")}</td>
+        <td>${assignedAssets.length}</td>
+        <td>${assignedAssets.length ? assignedAssets.map((asset) => escapeHtml(asset.asset_name)).join(", ") : "-"}</td>
+        <td>
+          <div class="table-actions">
+            <button type="button" class="table-button" data-edit-employee="${employee.id}">Edit</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <div class="dashboard-band">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Employees</p>
+          <h2>Create and manage employees</h2>
+        </div>
+        <button type="button" class="secondary-button" data-open-employee>Create employee</button>
+      </div>
+      <div class="search-panel">
+        <label class="toolbar-field search-label">
+          Search by Employee ID
+          <input id="employee-search-input" type="search" placeholder="EMP-1001" value="${escapeHtml(state.employeeSearch)}" autocomplete="off">
+        </label>
+        ${renderEmployeeSearchResult()}
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Employee ID</th>
+              <th>Department</th>
+              <th>Assigned assets</th>
+              <th>Asset list</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${rows || createEmptyRowMarkup(6, state.employeeSearch ? "No employee matches that Employee ID" : "No employees added yet")}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function openAssignmentDialog(assetId) {
+  const asset = findAsset(assetId);
+  if (!asset) {
+    return;
+  }
+
+  assignmentForm.reset();
+  state.assignmentEmployeeSearch = "";
+  assignmentForm.elements.assetId.value = assetId;
+  assignmentSummary.textContent = `${asset.asset_name} • ${getCategoryDefinition(asset.category).label}`;
+  assignmentEmployeeSelect.innerHTML = state.employees.map((employee) => `
+    <option value="${employee.id}">${escapeHtml(formatEmployeeLabel(employee))}</option>
+  `).join("");
+  assignmentEmployeeSelect.value = "";
+  if (assignmentEmployeeCodeInput) {
+    assignmentEmployeeCodeInput.value = "";
+  }
+  syncAssignmentEmployeeSelection();
+
+  assignmentDialog.showModal();
 }
 
 function normalizeEmployeeCode(value) {
@@ -1317,15 +1630,32 @@ function normalizeEmployeeCode(value) {
 }
 
 function formatEmployeeLabel(employee) {
-  if (!employee) {
+  return `${employee.name} (${employee.employee_id})`;
+}
+
+function formatDateTime(value) {
+  if (!value) {
     return "-";
   }
-
-  return `${employee.name} (${employee.employee_id || "-"})`;
+  return new Date(value).toLocaleString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function setStoragePill(text) {
   storagePill.textContent = text;
+}
+
+function setLoading(isLoading, message = "") {
+  state.isLoading = isLoading;
+  if (message) {
+    showAppMessage(message);
+  }
+  renderCurrentView();
 }
 
 function showLoginError(message) {
@@ -1339,21 +1669,24 @@ function hideLoginError() {
 }
 
 function showAppMessage(message) {
-  if (!appMessage) {
-    return;
-  }
-
   appMessage.hidden = false;
   appMessage.textContent = message;
 }
 
 function hideAppMessage() {
-  if (!appMessage) {
-    return;
-  }
-
   appMessage.hidden = true;
   appMessage.textContent = "";
+}
+
+function toast(message, tone = "success") {
+  const toastItem = document.createElement("div");
+  toastItem.className = `toast toast-${tone}`;
+  toastItem.textContent = message;
+  toastRegion.append(toastItem);
+  window.setTimeout(() => {
+    toastItem.classList.add("toast-out");
+    window.setTimeout(() => toastItem.remove(), 220);
+  }, 2400);
 }
 
 function isCloudMode() {
@@ -1362,44 +1695,13 @@ function isCloudMode() {
 
 function closeDialog(dialogId) {
   const dialog = document.getElementById(dialogId);
-  if (dialog.open) {
+  if (dialog?.open) {
     dialog.close();
   }
 }
 
-function getEmployeePhones(employeeId) {
-  return state.phones.filter((phone) => phone.employee_id === employeeId);
-}
-
-function getEmployeeSims(employeeId) {
-  return state.sims.filter((sim) => sim.employee_id === employeeId);
-}
-
-function findEmployee(employeeId) {
-  return state.employees.find((employee) => employee.id === employeeId);
-}
-
-function findEmployeeByCode(employeeCode) {
-  const normalized = normalizeEmployeeCode(employeeCode);
-  return state.employees.find((employee) => normalizeEmployeeCode(employee.employee_id) === normalized);
-}
-
-function findPhone(phoneId) {
-  return state.phones.find((phone) => phone.id === phoneId);
-}
-
-function findSim(simId) {
-  return state.sims.find((sim) => sim.id === simId);
-}
-
-function createEmptyRow(colspan, text) {
-  const row = document.createElement("tr");
-  row.innerHTML = `<td colspan="${colspan}" class="empty-text">${escapeHtml(text)}</td>`;
-  return row;
-}
-
-function cloneSeedData() {
-  return structuredClone(seedData);
+function createEmptyRowMarkup(colspan, text) {
+  return `<tr><td colspan="${colspan}" class="empty-text">${escapeHtml(text)}</td></tr>`;
 }
 
 function createId(prefix) {
@@ -1410,8 +1712,16 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+function renderStatusBadge(isAssigned) {
+  if (isAssigned) {
+    return '<span class="status-badge assigned">Assigned</span>';
+  }
+
+  return '<span class="status-badge available">Available</span>';
+}
+
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
