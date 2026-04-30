@@ -1404,68 +1404,46 @@ function findEmployeeByCode(employeeCode) {
 
 function renderEmployeeSearchResult() {
   if (!state.employeeSearch) {
-    return `<div class="search-result">
-      Enter an Employee ID to load employee details and assigned assets.
-    </div>`;
+    return '<div class="search-result">Enter a full Employee ID to load the employee details and assigned assets.</div>';
   }
 
-  const matches = getFilteredEmployees();
+  const exactMatch = findEmployeeByCode(state.employeeSearch);
+  if (!exactMatch) {
+    if (state.employeeSearch.length < 8) {
+      return `<div class="search-result">Keep typing the Employee ID. Current input: <strong>${escapeHtml(state.employeeSearch)}</strong></div>`;
+    }
 
-  if (!matches.length) {
-    return `<div class="search-result">
-      No employee found for <strong>${escapeHtml(state.employeeSearch)}</strong>.
-    </div>`;
+    return `<div class="search-result">No employee found for <strong>${escapeHtml(state.employeeSearch)}</strong>.</div>`;
   }
 
-  return matches.map((employee) => {
-    const assignedAssets = getEmployeeAssets(employee.id);
+  const exactAssignedAssets = getEmployeeAssets(exactMatch.id);
+  const exactAssignedAssetMarkup = exactAssignedAssets.length
+    ? exactAssignedAssets.map((asset) => `<li>${escapeHtml(asset.asset_name)} <span class="muted-line">${escapeHtml(getCategoryDefinition(asset.category).label)} â€¢ ${escapeHtml(asset.serial_number)}</span></li>`).join("")
+    : "<li>No assets assigned right now.</li>";
 
-    const assignedAssetMarkup = assignedAssets.length
-      ? assignedAssets.map((asset) => `
-          <li>
-            ${escapeHtml(asset.asset_name)}
-            <span class="muted-line">
-              ${escapeHtml(getCategoryDefinition(asset.category).label)} • ${escapeHtml(asset.serial_number)}
-            </span>
-          </li>
-        `).join("")
-      : "<li>No assets assigned right now.</li>";
-
-    return `
-      <div class="search-result">
-        <div class="search-result-card">
-          <div class="search-result-head">
-            <div>
-              <div class="search-result-name">${escapeHtml(employee.name)}</div>
-              <div class="search-result-meta">
-                ${escapeHtml(employee.employee_id)} • ${escapeHtml(employee.department || "No department")}
-              </div>
-            </div>
-            <span class="status-badge ${assignedAssets.length ? "assigned" : "available"}">
-              ${assignedAssets.length ? `${assignedAssets.length} assigned` : "No assigned assets"}
-            </span>
+  return `
+    <div class="search-result">
+      <div class="search-result-card">
+        <div class="search-result-head">
+          <div>
+            <div class="search-result-name">${escapeHtml(exactMatch.name)}</div>
+            <div class="search-result-meta">${escapeHtml(exactMatch.employee_id)} â€¢ ${escapeHtml(exactMatch.department || "No department")}</div>
           </div>
-
-          <div class="search-result-grid">
-            <div class="mini-card">
-              <h3>Employee details</h3>
-              <div class="search-result-meta">
-                ${escapeHtml(employee.email || "No email added")}
-              </div>
-            </div>
-
-            <div class="mini-card">
-              <h3>Assigned assets</h3>
-              <ul class="asset-list">
-                ${assignedAssetMarkup}
-              </ul>
-            </div>
+          <span class="status-badge ${exactAssignedAssets.length ? "assigned" : "available"}">${exactAssignedAssets.length ? `${exactAssignedAssets.length} assigned` : "No assigned assets"}</span>
+        </div>
+        <div class="search-result-grid">
+          <div class="mini-card">
+            <h3>Employee details</h3>
+            <div class="search-result-meta">${escapeHtml(exactMatch.email || "No email added")}</div>
+          </div>
+          <div class="mini-card">
+            <h3>Assigned assets</h3>
+            <ul class="asset-list">${exactAssignedAssetMarkup}</ul>
           </div>
         </div>
       </div>
-    `;
-  }).join("");
-}
+    </div>
+  `;
 
   return matches.map((employee) => {
     const assignedAssets = getEmployeeAssets(employee.id);
