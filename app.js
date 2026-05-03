@@ -97,7 +97,9 @@ const state = {
   employeesSearchSnapshot: null,
   assignmentEmployeeSearch: "",
   statusFilter: "all",
-  isLoading: false
+  isLoading: false,
+  currentPage: 1,
+  rowsPerPage: 15
 };
 
 /** Singleton application state (same reference as `state`; useful after navigation / debugging). */
@@ -146,6 +148,7 @@ localSessionButton?.addEventListener("click", handleLocalSessionLogin);
 employeeForm.addEventListener("submit", handleEmployeeSave);
 assetForm.addEventListener("submit", handleAssetSave);
 assignmentForm.addEventListener("submit", handleAssignmentSave);
+document.getElementById("tabs-container")?.addEventListener("click", handleTabsContainerClick);
 document.body.addEventListener("click", handleBodyClick);
 document.body.addEventListener("input", handleBodyInput);
 document.body.addEventListener("change", handleBodyChange);
@@ -483,6 +486,7 @@ async function loadCloudData(options = {}) {
     return false;
   }
 
+  const suppressLoadingUi = options.suppressLoadingUi === true;
   hideLoginError();
 
   const cached = readCloudCache();
@@ -523,7 +527,12 @@ async function loadCloudData(options = {}) {
     return true;
   }
 
-  setLoading(true, "Loading assets, employees, and assignments...");
+  let showedLoadingOverlay = false;
+  if (!suppressLoadingUi) {
+    setLoading(true, "Loading assets, employees, and assignments...");
+    showedLoadingOverlay = true;
+  }
+
   abortCloudSnapshotFetch();
   cloudSnapshotAbortController = new AbortController();
   const signal = cloudSnapshotAbortController.signal;
@@ -567,17 +576,20 @@ async function loadCloudData(options = {}) {
     return false;
   } finally {
     cloudSnapshotAbortController = null;
-    setLoading(false);
+    if (showedLoadingOverlay) {
+      setLoading(false);
+    }
   }
 }
 
 /** Refetch all dashboard tables from Supabase and rewrite localStorage cache. Bypasses SWR so writes show up immediately. */
 async function refreshCloudWorkspace(extra = {}) {
-  const { seedIfEmpty = false, ...passThrough } = extra;
+  const { seedIfEmpty = false, suppressLoadingUi = true, ...passThrough } = extra;
   return loadCloudData({
     ...passThrough,
     seedIfEmpty,
-    allowCacheHydrate: false
+    allowCacheHydrate: false,
+    suppressLoadingUi
   });
 }
 
@@ -732,7 +744,7 @@ function syncRefreshLoop() {
 
   if (state.authMode === "cloud" && supabaseClient) {
     state.refreshHandle = window.setInterval(() => {
-      loadCloudData({ seedIfEmpty: false });
+      loadCloudData({ seedIfEmpty: false, suppressLoadingUi: true });
     }, 20000);
   }
 }
@@ -743,7 +755,7 @@ function handleVisibilityRefresh() {
   }
 
   if (state.authMode === "cloud" && supabaseClient) {
-    loadCloudData({ seedIfEmpty: false });
+    loadCloudData({ seedIfEmpty: false, suppressLoadingUi: true });
     return;
   }
 
@@ -753,14 +765,35 @@ function handleVisibilityRefresh() {
   }
 }
 
+function handleTabsContainerClick(event) {
+  const viewBtn = event.target.closest("#dashboard-nav [data-view]");
+  if (viewBtn) {
+    state.currentView = viewBtn.getAttribute("data-view");
+    state.activeViewTab = state.currentView;
+    state.currentPage = 1;
+    setExclusiveWorkspaceTab(viewBtn);
+    renderApp();
+    return;
+  }
+
+  const catBtn = event.target.closest("#category-strip [data-category]");
+  if (catBtn) {
+    state.selectedCategory = catBtn.getAttribute("data-category");
+    state.currentView = "category";
+    setExclusiveCategoryStripButton(catBtn);
+    renderApp();
+  }
+}
+
 function handleBodyClick(event) {
+  if (event.target.closest("#tabs-container")) {
+    return;
+  }
+
   const viewTrigger = event.target.closest("[data-view]");
   if (viewTrigger) {
     state.currentView = viewTrigger.getAttribute("data-view");
     state.activeViewTab = state.currentView;
-    if (viewTrigger.closest("#dashboard-nav")) {
-      setExclusiveWorkspaceTab(viewTrigger);
-    }
     renderApp();
     return;
   }
@@ -769,6 +802,7 @@ function handleBodyClick(event) {
   if (categoryTrigger) {
     state.selectedCategory = categoryTrigger.getAttribute("data-category");
     state.currentView = "category";
+    state.currentPage = 1;
     renderApp();
     return;
   }
@@ -812,14 +846,36 @@ function handleBodyClick(event) {
   const closeDialogTrigger = event.target.closest("[data-close-dialog]");
   if (closeDialogTrigger) {
     closeDialog(closeDialogTrigger.getAttribute("data-close-dialog"));
+    return;
+  }
+
+  const pageGoTrigger = event.target.closest("[data-page-go]");
+  if (pageGoTrigger) {
+    state.currentPage = parseInt(pageGoTrigger.getAttribute("data-page-go"), 10);
+    renderApp();
+    return;
+  }
+
+  const pagePrevTrigger = event.target.closest("[data-page-prev]");
+  if (pagePrevTrigger && state.currentPage > 1) {
+    state.currentPage--;
+    renderApp();
+    return;
+  }
+
+  const pageNextTrigger = event.target.closest("[data-page-next]");
+  if (pageNextTrigger) {
+    state.currentPage++;
+    renderApp();
+    return;
   }
 }
 
 function handleBodyInput(event) {
   const target = event.target;
-
   if (target.id === "asset-search-input") {
     state.assetSearch = target.value.trim();
+    state.currentPage = 1;
     updateCategorySearchResults();
     return;
   }
@@ -827,6 +883,7 @@ function handleBodyInput(event) {
   if (target.id === "employee-search-input") {
     state.employeeSearchRaw = target.value;
     state.employeeSearch = normalizeEmployeeCode(target.value);
+    state.currentPage = 1;
     if (isCloudMode()) {
       state.employeesSearchSnapshot = null;
     }
@@ -839,6 +896,7 @@ function handleBodyInput(event) {
 
   if (target.id === "assignment-employee-code") {
     state.assignmentEmployeeSearch = normalizeEmployeeCode(target.value);
+    state.currentPage = 1;
     syncAssignmentEmployeeSelection();
     return;
   }
@@ -853,6 +911,7 @@ function handleBodyChange(event) {
 
   if (target.id === "asset-status-filter") {
     state.statusFilter = target.value;
+    state.currentPage = 1;
     updateCategorySearchResults();
   }
 }
@@ -908,12 +967,33 @@ function syncWorkspaceTabsFromState() {
   });
 }
 
+function setExclusiveCategoryStripButton(selectedButton) {
+  const strip = document.getElementById("category-strip");
+  if (!strip || !selectedButton) {
+    return;
+  }
+
+  strip.querySelectorAll(".category-button").forEach((button) => {
+    button.classList.toggle("active", button === selectedButton);
+  });
+}
+
+function syncCategoryStripFromState() {
+  const strip = document.getElementById("category-strip");
+  if (!strip) {
+    return;
+  }
+
+  const activeOnStrip = state.currentView === "category";
+  const match = activeOnStrip ? strip.querySelector(`[data-category="${state.selectedCategory}"]`) : null;
+  strip.querySelectorAll(".category-button").forEach((button) => {
+    button.classList.toggle("active", Boolean(match) && button === match);
+  });
+}
+
 function renderNavigation() {
   syncWorkspaceTabsFromState();
-
-  document.querySelectorAll("[data-category]").forEach((button) => {
-    button.classList.toggle("active", button.getAttribute("data-category") === state.selectedCategory && state.currentView === "category");
-  });
+  syncCategoryStripFromState();
 }
 
 function cleanupBeforeViewRender() {
@@ -1059,14 +1139,33 @@ function renderCurrentView() {
 }
 
 function renderOverviewView() {
+  const iconMap = {
+    phones: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>`,
+    sims: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Z"/><path d="M14 8V4"/><path d="M18 10h-4V6"/><rect width="4" height="4" x="8" y="10" rx="1"/></svg>`,
+    laptops: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.2 2.4a.5.5 0 0 1-.45.6H3.25a.5.5 0 0 1-.45-.6L4 16"/></svg>`,
+    chargers: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v5m6-5v5M6 7h12a2 2 0 0 1 2 2v4a8 8 0 0 1-16 0V9a2 2 0 0 1 2-2z"/><path d="M12 15v7"/></svg>`,
+    desktops: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>`,
+    cpus: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>`,
+    monitors: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>`,
+    mouse: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="20" x="6" y="2" rx="6"/><path d="M12 2v8"/></svg>`,
+    keyboards: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2" ry="2"/><path d="M6 10h.01"/><path d="M10 10h.01"/><path d="M14 10h.01"/><path d="M18 10h.01"/><path d="M6 14h.01"/><path d="M10 14h.01"/><path d="M14 14h.01"/><path d="M18 14h.01"/></svg>`,
+    headphones: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>`,
+    ups: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="18" x="6" y="4" rx="2"/><path d="M10 2h4"/><path d="m11 14 3-3h-2l1-3-3 3h2l-1 3Z"/></svg>`
+  };
+
   const categoryCards = CATEGORY_DEFINITIONS.map((category) => {
     const assets = getAssetsByCategory(category.key);
     const assigned = assets.filter((asset) => asset.status === "Assigned").length;
+    const icon = iconMap[category.key] || "";
     return `
       <button type="button" class="category-summary-card" data-category="${category.key}">
-        <span class="eyebrow">${escapeHtml(category.label)}</span>
-        <strong>${assets.length}</strong>
-        <span class="muted-line">${assigned} assigned</span>
+        <div class="summary-icon-wrapper">${icon}</div>
+        <span class="summary-label">${escapeHtml(category.label)}</span>
+        <strong class="summary-total">${assets.length}</strong>
+        <div class="summary-status-pill">
+          <span class="status-dot"></span>
+          ${assigned} assigned
+        </div>
       </button>
     `;
   }).join("");
@@ -1077,7 +1176,10 @@ function renderOverviewView() {
     <div class="dashboard-band">
       <div class="section-header">
         <div>
-          <p class="eyebrow">Summary</p>
+          <p class="eyebrow summary-eyebrow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            SUMMARY
+          </p>
           <h2>Assets by category</h2>
         </div>
       </div>
@@ -1111,6 +1213,7 @@ function renderOverviewView() {
 }
 
 function renderEmployeesView() {
+  const filteredEmployees = getEmployeesForEmployeesView();
   return `
     <div class="dashboard-band">
       <div class="section-header">
@@ -1142,12 +1245,15 @@ function renderEmployeesView() {
           <tbody id="employee-table-body">${renderEmployeeTableRows()}</tbody>
         </table>
       </div>
+      ${renderPagination(filteredEmployees.length)}
     </div>
   `;
 }
 
 function renderHistoryView() {
-  const rows = getRecentAssignments(100).map((assignment) => renderAssignmentRow(assignment)).join("");
+  const assignments = state.assignments;
+  const paginatedAssignments = paginate(assignments);
+  const rows = paginatedAssignments.map((assignment) => renderAssignmentRow(assignment)).join("");
 
   return `
     <div class="dashboard-band">
@@ -1172,12 +1278,14 @@ function renderHistoryView() {
           <tbody>${rows || createEmptyRowMarkup(6, "No assignment history yet")}</tbody>
         </table>
       </div>
+      ${renderPagination(assignments.length)}
     </div>
   `;
 }
 
 function renderCategoryView() {
   const category = getCategoryDefinition(state.selectedCategory);
+  const assets = getFilteredCategoryAssets(state.selectedCategory);
   return `
     <div class="dashboard-band">
       <div class="section-header">
@@ -1219,6 +1327,7 @@ function renderCategoryView() {
           <tbody id="category-table-body">${renderCategoryTableRows()}</tbody>
         </table>
       </div>
+      ${renderPagination(assets.length)}
     </div>
   `;
 }
@@ -1736,6 +1845,40 @@ function syncAssetSerialLabel(categoryKey) {
   assetSerialLabel.textContent = getCategoryDefinition(categoryKey).serialLabel;
 }
 
+function paginate(items) {
+  const start = (state.currentPage - 1) * state.rowsPerPage;
+  const end = start + state.rowsPerPage;
+  return items.slice(start, end);
+}
+
+function renderPagination(totalItems) {
+  const totalPages = Math.ceil(totalItems / state.rowsPerPage);
+  if (totalPages <= 1) return "";
+
+  let pages = "";
+  const startPage = Math.max(1, state.currentPage - 2);
+  const endPage = Math.min(totalPages, startPage + 4);
+  const finalStartPage = Math.max(1, endPage - 4);
+
+  for (let i = finalStartPage; i <= endPage; i++) {
+    pages += `<button type="button" class="page-button ${i === state.currentPage ? "active" : ""}" data-page-go="${i}">${i}</button>`;
+  }
+
+  return `
+    <div class="pagination-container">
+      <button type="button" class="page-nav-button" data-page-prev ${state.currentPage === 1 ? "disabled" : ""}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Prev
+      </button>
+      <div class="page-numbers">${pages}</div>
+      <button type="button" class="page-nav-button" data-page-next ${state.currentPage === totalPages ? "disabled" : ""}>
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+  `;
+}
+
 function getEmployeesForEmployeesView() {
   if (state.employeesSearchSnapshot !== null) {
     return state.employeesSearchSnapshot;
@@ -1759,7 +1902,8 @@ function getFilteredEmployees() {
 
 function renderEmployeeTableRows() {
   const filteredEmployees = getEmployeesForEmployeesView();
-  const rows = filteredEmployees.map((employee) => {
+  const paginatedEmployees = paginate(filteredEmployees);
+  const rows = paginatedEmployees.map((employee) => {
     const assignedAssets = getEmployeeAssets(employee.id);
     return `
       <tr>
@@ -1786,7 +1930,8 @@ function renderEmployeeTableRows() {
 
 function renderCategoryTableRows() {
   const assets = getFilteredCategoryAssets(state.selectedCategory);
-  const rows = assets.map((asset) => {
+  const paginatedAssets = paginate(assets);
+  const rows = paginatedAssets.map((asset) => {
     const employee = findEmployee(asset.assigned_employee_id);
     return `
       <tr>

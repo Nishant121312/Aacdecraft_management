@@ -89,29 +89,77 @@
         <section class="panel">
           <div class="section-header dashboard-header">
             <div>
-              <p class="eyebrow">Workspace</p>
+              <p class="eyebrow workspace-eyebrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                WORKSPACE
+              </p>
               <h2>Asset management system</h2>
             </div>
           </div>
 
-          <div class="dashboard-nav" id="dashboard-nav">
-            <button type="button" class="secondary-button nav-button" data-view="overview">Overview</button>
-            <button type="button" class="secondary-button nav-button" data-view="employees">Employees</button>
-            <button type="button" class="secondary-button nav-button" data-view="history">Assignment history</button>
-          </div>
+          <!-- Delegated navigation lives on #tabs-container; dynamic #view-container content does not affect these buttons. -->
+          <div id="tabs-container" class="tabs-container">
+            <div class="dashboard-nav" id="dashboard-nav">
+              <button type="button" class="nav-button workspace-tab active" data-view="overview">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/><path d="m7 12 3-3 4 4 3-3"/></svg>
+                Overview
+              </button>
+              <button type="button" class="nav-button workspace-tab" data-view="employees">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Employees
+              </button>
+              <button type="button" class="nav-button workspace-tab" data-view="history">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                Assignment history
+              </button>
+            </div>
 
-          <div class="category-strip" id="category-strip">
-            <button type="button" class="ghost-button category-button" data-category="phones">Phones</button>
-            <button type="button" class="ghost-button category-button" data-category="sims">SIMs</button>
-            <button type="button" class="ghost-button category-button" data-category="laptops">Laptops</button>
-            <button type="button" class="ghost-button category-button" data-category="chargers">Chargers</button>
-            <button type="button" class="ghost-button category-button" data-category="desktops">Desktops</button>
-            <button type="button" class="ghost-button category-button" data-category="cpus">CPUs</button>
-            <button type="button" class="ghost-button category-button" data-category="monitors">Monitors</button>
-            <button type="button" class="ghost-button category-button" data-category="mouse">Mouse</button>
-            <button type="button" class="ghost-button category-button" data-category="keyboards">Keyboards</button>
-            <button type="button" class="ghost-button category-button" data-category="headphones">Headphones</button>
-            <button type="button" class="ghost-button category-button" data-category="ups">UPS</button>
+            <div class="category-grid" id="category-strip">
+              <button type="button" class="category-button active" data-category="phones">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                <span>Phones</span>
+              </button>
+              <button type="button" class="category-button" data-category="sims">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Z"/><path d="M14 8V4"/><path d="M18 10h-4V6"/><rect width="4" height="4" x="8" y="10" rx="1"/></svg>
+                <span>SIMs</span>
+              </button>
+              <button type="button" class="category-button" data-category="laptops">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.2 2.4a.5.5 0 0 1-.45.6H3.25a.5.5 0 0 1-.45-.6L4 16"/></svg>
+                <span>Laptops</span>
+              </button>
+              <button type="button" class="category-button" data-category="chargers">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v5m6-5v5M6 7h12a2 2 0 0 1 2 2v4a8 8 0 0 1-16 0V9a2 2 0 0 1 2-2z"/><path d="M12 15v7"/></svg>
+                <span>Chargers</span>
+              </button>
+              <button type="button" class="category-button" data-category="desktops">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                <span>Desktops</span>
+              </button>
+              <button type="button" class="category-button" data-category="cpus">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+                <span>CPUs</span>
+              </button>
+              <button type="button" class="category-button" data-category="monitors">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                <span>Monitors</span>
+              </button>
+              <button type="button" class="category-button" data-category="mouse">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="20" x="6" y="2" rx="6"/><path d="M12 2v8"/></svg>
+                <span>Mouse</span>
+              </button>
+              <button type="button" class="category-button" data-category="keyboards">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2" ry="2"/><path d="M6 10h.01"/><path d="M10 10h.01"/><path d="M14 10h.01"/><path d="M18 10h.01"/><path d="M6 14h.01"/><path d="M10 14h.01"/><path d="M14 14h.01"/><path d="M18 14h.01"/></svg>
+                <span>Keyboards</span>
+              </button>
+              <button type="button" class="category-button" data-category="headphones">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
+                <span>Headphones</span>
+              </button>
+              <button type="button" class="category-button" data-category="ups">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="18" x="6" y="4" rx="2"/><path d="M10 2h4"/><path d="m11 14 3-3h-2l1-3-3 3h2l-1 3Z"/></svg>
+                <span>UPS</span>
+              </button>
+            </div>
           </div>
         </section>
 
