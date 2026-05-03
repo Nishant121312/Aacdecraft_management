@@ -14,8 +14,12 @@ const CATEGORY_DEFINITIONS = [
 
 const STORAGE_KEYS = {
   localSession: "asset-app-local-session-v3",
-  localData: "asset-app-local-data-v3"
+  localData: "asset-app-local-data-v3",
+  cloudCache: "asset-app-cloud-cache-v1"
 };
+
+/** Only fetch from Supabase when cached dashboard data is older than this (stale-while-revalidate). */
+const CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
 const seedData = {
   employees: [
@@ -89,10 +93,20 @@ const state = {
   selectedCategory: "phones",
   assetSearch: "",
   employeeSearch: "",
+  employeeSearchRaw: "",
+  employeesSearchSnapshot: null,
   assignmentEmployeeSearch: "",
   statusFilter: "all",
   isLoading: false
 };
+
+/** Singleton application state (same reference as `state`; useful after navigation / debugging). */
+const globalState = state;
+
+let cloudSnapshotAbortController = null;
+let employeeSearchAbortController = null;
+let employeeSearchDebounceTimer = null;
+let lastRenderedViewName = null;
 
 const config = window.ASSET_APP_CONFIG || {};
 const hasSupabaseLibrary = Boolean(window.supabase?.createClient);
@@ -137,37 +151,49 @@ document.body.addEventListener("input", handleBodyInput);
 document.body.addEventListener("change", handleBodyChange);
 document.addEventListener("visibilitychange", handleVisibilityRefresh);
 
-initialize();
+initialize().catch((error) => {
+  console.error("Application bootstrap failed", error);
+  if (setupMessage) {
+    setupMessage.hidden = false;
+    setupMessage.textContent = "Something went wrong starting the app. Please refresh the page.";
+  }
+});
 
 async function initialize() {
-  state.configReady = Boolean(supabaseClient);
-  populateCategorySelect();
-  setLoggedOutMessage();
+  try {
+    state.configReady = Boolean(supabaseClient);
+    populateCategorySelect();
+    setLoggedOutMessage();
 
-  if (isDemoMode) {
-    startLocalSession("demo@asset.local", "Storage: Local demo session", "Demo mode is using the bundled multi-asset sample data in this browser.");
-    return;
-  }
+    if (isDemoMode) {
+      startLocalSession("demo@asset.local", "Storage: Local demo session", "Demo mode is using the bundled multi-asset sample data in this browser.");
+      return;
+    }
 
-  if (supabaseClient) {
-    await restoreCloudSession();
-    registerAuthListener();
-  }
+    if (supabaseClient) {
+      await restoreCloudSession();
+      registerAuthListener();
+    }
 
-  if (state.session && state.authMode === "cloud") {
+    if (state.session && state.authMode === "cloud") {
+      syncAuthView();
+      await loadCloudData({ seedIfEmpty: true });
+      return;
+    }
+
+    const localSession = readStoredLocalSession();
+    if (localSession) {
+      restoreLocalSession(localSession);
+      return;
+    }
+
+    clearWorkingData();
     syncAuthView();
-    await loadCloudData({ seedIfEmpty: true });
-    return;
+  } catch (error) {
+    console.error("initialize failed", error);
+    setLoggedOutMessage();
+    syncAuthView();
   }
-
-  const localSession = readStoredLocalSession();
-  if (localSession) {
-    restoreLocalSession(localSession);
-    return;
-  }
-
-  clearWorkingData();
-  syncAuthView();
 }
 
 function registerAuthListener() {
@@ -296,6 +322,8 @@ function handleLocalSessionLogin() {
 async function handleLogout() {
   clearStoredLocalSession();
   hideAppMessage();
+  clearCloudCache();
+  abortCloudSnapshotFetch();
 
   if (state.authMode === "cloud" && supabaseClient) {
     try {
@@ -341,61 +369,250 @@ function hydrateLocalData() {
   persistLocalData();
 }
 
+function abortCloudSnapshotFetch() {
+  if (cloudSnapshotAbortController) {
+    cloudSnapshotAbortController.abort();
+    cloudSnapshotAbortController = null;
+  }
+}
+
+function readCloudCache() {
+  try {
+    const rawValue = localStorage.getItem(STORAGE_KEYS.cloudCache);
+    if (!rawValue) {
+      return null;
+    }
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || typeof parsed.ts !== "number") {
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    console.warn("readCloudCache failed", error);
+    return null;
+  }
+}
+
+function writeCloudCache(rows) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.cloudCache, JSON.stringify({
+      ts: Date.now(),
+      employees: rows.employees,
+      assets: rows.assets,
+      assignments: rows.assignments
+    }));
+  } catch (error) {
+    console.warn("writeCloudCache failed", error);
+  }
+}
+
+function clearCloudCache() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.cloudCache);
+  } catch (error) {
+    console.warn("clearCloudCache failed", error);
+  }
+}
+
+function fingerprintDataset(employees, assets, assignments) {
+  const stable = (rows) => [...rows].sort((left, right) => String(left.id).localeCompare(String(right.id)));
+  return JSON.stringify({
+    employees: stable(employees),
+    assets: stable(assets),
+    assignments: stable(assignments)
+  });
+}
+
+function applyCloudRows(employees, assets, assignments, pillLabel, messageText) {
+  const prevFingerprint = fingerprintDataset(state.employees, state.assets, state.assignments);
+  state.storageMode = "cloud";
+  state.employees = normalizeEmployees(employees);
+  state.assets = normalizeAssets(assets);
+  state.assignments = normalizeAssignments(assignments);
+  const nextFingerprint = fingerprintDataset(state.employees, state.assets, state.assignments);
+  setStoragePill(pillLabel);
+  if (messageText) {
+    showAppMessage(messageText);
+  }
+  if (prevFingerprint !== nextFingerprint) {
+    renderApp();
+  }
+}
+
+function withAbortSignal(query, signal) {
+  if (!signal || !query || typeof query.abortSignal !== "function") {
+    return query;
+  }
+
+  return query.abortSignal(signal);
+}
+
+async function fetchCloudDataset(signal, options = {}) {
+  const [employeesResult, assetsResult, assignmentsResult] = await Promise.all([
+    withAbortSignal(supabaseClient.from("employees").select("*").order("created_at", { ascending: false }), signal),
+    withAbortSignal(supabaseClient.from("assets").select("*").order("created_at", { ascending: false }), signal),
+    withAbortSignal(supabaseClient.from("assignments").select("*").order("assigned_at", { ascending: false }), signal)
+  ]);
+
+  const firstError = employeesResult.error || assetsResult.error || assignmentsResult.error;
+  if (firstError) {
+    return { ok: false, error: firstError };
+  }
+
+  const employees = employeesResult.data ?? [];
+  const assets = assetsResult.data ?? [];
+  const assignments = assignmentsResult.data ?? [];
+  const isEmpty = employees.length === 0 && assets.length === 0 && assignments.length === 0;
+
+  if (isEmpty && options.seedIfEmpty) {
+    const seeded = await initializeDatabaseWithSeedData();
+    if (seeded) {
+      return fetchCloudDataset(signal, { ...options, seedIfEmpty: false });
+    }
+  }
+
+  if (isEmpty) {
+    return { ok: false, empty: true };
+  }
+
+  return { ok: true, employees, assets, assignments };
+}
+
 async function loadCloudData(options = {}) {
   if (!supabaseClient || !state.session) {
     return false;
   }
 
-  setLoading(true, "Loading assets, employees, and assignments...");
   hideLoginError();
 
-  try {
-    const [employeesResult, assetsResult, assignmentsResult] = await Promise.all([
-      supabaseClient.from("employees").select("*").order("created_at", { ascending: false }),
-      supabaseClient.from("assets").select("*").order("created_at", { ascending: false }),
-      supabaseClient.from("assignments").select("*").order("assigned_at", { ascending: false })
-    ]);
+  const cached = readCloudCache();
+  const cacheAgeMs = cached?.ts ? Date.now() - cached.ts : Infinity;
+  const hasValidCache = Boolean(
+    cached
+      && Array.isArray(cached.employees)
+      && Array.isArray(cached.assets)
+      && Array.isArray(cached.assignments)
+  );
 
-    const firstError = employeesResult.error || assetsResult.error || assignmentsResult.error;
-    if (firstError) {
-      showAppMessage(`Cloud data is unavailable right now: ${firstError.message}. Falling back to local browser data.`);
+  const cacheHydrateAllowed = state.storageMode !== "local-fallback" && options.allowCacheHydrate !== false;
+
+  if (hasValidCache && cacheHydrateAllowed) {
+    try {
+      applyCloudRows(
+        cached.employees,
+        cached.assets,
+        cached.assignments,
+        cacheAgeMs < CACHE_MAX_AGE_MS ? "Storage: Supabase cloud (cached)" : "Storage: Supabase cloud",
+        cacheAgeMs < CACHE_MAX_AGE_MS ? "" : ""
+      );
+      if (cacheAgeMs < CACHE_MAX_AGE_MS) {
+        showAppMessage("Showing cached dashboard data.");
+      }
+    } catch (error) {
+      console.error("Hydrating cloud cache failed", error);
+    }
+
+    setLoading(false);
+
+    if (cacheAgeMs < CACHE_MAX_AGE_MS) {
+      return true;
+    }
+
+    showAppMessage("Refreshing dashboard in the background...");
+    void revalidateCloudDataset(options);
+    return true;
+  }
+
+  setLoading(true, "Loading assets, employees, and assignments...");
+  abortCloudSnapshotFetch();
+  cloudSnapshotAbortController = new AbortController();
+  const signal = cloudSnapshotAbortController.signal;
+
+  try {
+    const result = await fetchCloudDataset(signal, options);
+
+    if (!result.ok && result.error) {
+      showAppMessage(`Cloud data is unavailable right now: ${result.error.message}. Falling back to local browser data.`);
       startCloudFallback();
       return false;
     }
 
-    const employees = employeesResult.data ?? [];
-    const assets = assetsResult.data ?? [];
-    const assignments = assignmentsResult.data ?? [];
-    const isEmpty = employees.length === 0 && assets.length === 0 && assignments.length === 0;
-
-    if (isEmpty && options.seedIfEmpty) {
-      const seeded = await initializeDatabaseWithSeedData();
-      if (seeded) {
-        return loadCloudData({ seedIfEmpty: false });
-      }
-    }
-
-    if (isEmpty) {
+    if (!result.ok && result.empty) {
       showAppMessage("Cloud tables are still empty, so the dashboard is using local sample data for now.");
       startCloudFallback();
       return false;
     }
 
-    state.storageMode = "cloud";
-    state.employees = normalizeEmployees(employees);
-    state.assets = normalizeAssets(assets);
-    state.assignments = normalizeAssignments(assignments);
-    setStoragePill("Storage: Supabase cloud");
-    showAppMessage("Connected to Supabase cloud data.");
-    renderApp();
+    writeCloudCache({
+      employees: result.employees,
+      assets: result.assets,
+      assignments: result.assignments
+    });
+
+    applyCloudRows(
+      result.employees,
+      result.assets,
+      result.assignments,
+      "Storage: Supabase cloud",
+      "Connected to Supabase cloud data."
+    );
     return true;
   } catch (error) {
+    if (error?.name === "AbortError") {
+      return false;
+    }
     console.error("Cloud data load failed", error);
     showAppMessage("Cloud data could not be loaded, so the app switched to local browser data.");
     startCloudFallback();
     return false;
   } finally {
+    cloudSnapshotAbortController = null;
     setLoading(false);
+  }
+}
+
+async function revalidateCloudDataset(options = {}) {
+  if (!supabaseClient || !state.session) {
+    return;
+  }
+
+  abortCloudSnapshotFetch();
+  cloudSnapshotAbortController = new AbortController();
+  const signal = cloudSnapshotAbortController.signal;
+
+  try {
+    const result = await fetchCloudDataset(signal, { ...options, seedIfEmpty: false });
+
+    if (!result.ok) {
+      return;
+    }
+
+    writeCloudCache({
+      employees: result.employees,
+      assets: result.assets,
+      assignments: result.assignments
+    });
+
+    const prevFingerprint = fingerprintDataset(state.employees, state.assets, state.assignments);
+    const nextEmployees = normalizeEmployees(result.employees);
+    const nextAssets = normalizeAssets(result.assets);
+    const nextAssignments = normalizeAssignments(result.assignments);
+    const nextFingerprint = fingerprintDataset(nextEmployees, nextAssets, nextAssignments);
+
+    if (prevFingerprint !== nextFingerprint) {
+      state.employees = nextEmployees;
+      state.assets = nextAssets;
+      state.assignments = nextAssignments;
+      setStoragePill("Storage: Supabase cloud");
+      showAppMessage("Dashboard updated from Supabase.");
+      renderApp();
+    }
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      console.warn("Background cloud refresh failed", error);
+    }
+  } finally {
+    cloudSnapshotAbortController = null;
   }
 }
 
@@ -527,54 +744,61 @@ function handleVisibilityRefresh() {
 }
 
 function handleBodyClick(event) {
-  const target = event.target;
-
-  if (target.matches("[data-view]")) {
-    state.currentView = target.getAttribute("data-view");
+  const viewTrigger = event.target.closest("[data-view]");
+  if (viewTrigger) {
+    state.currentView = viewTrigger.getAttribute("data-view");
     state.activeViewTab = state.currentView;
     renderApp();
     return;
   }
 
-  if (target.matches("[data-category]")) {
-    state.selectedCategory = target.getAttribute("data-category");
+  const categoryTrigger = event.target.closest("[data-category]");
+  if (categoryTrigger) {
+    state.selectedCategory = categoryTrigger.getAttribute("data-category");
     state.currentView = "category";
     renderApp();
     return;
   }
 
-  if (target.matches("[data-open-employee]")) {
+  const openEmployeeTrigger = event.target.closest("[data-open-employee]");
+  if (openEmployeeTrigger) {
     openEmployeeDialog();
     return;
   }
 
-  if (target.matches("[data-edit-employee]")) {
-    openEmployeeDialog(target.getAttribute("data-edit-employee"));
+  const editEmployeeTrigger = event.target.closest("[data-edit-employee]");
+  if (editEmployeeTrigger) {
+    openEmployeeDialog(editEmployeeTrigger.getAttribute("data-edit-employee"));
     return;
   }
 
-  if (target.matches("[data-open-asset]")) {
-    openAssetDialog("", target.getAttribute("data-open-asset") || state.selectedCategory);
+  const openAssetTrigger = event.target.closest("[data-open-asset]");
+  if (openAssetTrigger) {
+    openAssetDialog("", openAssetTrigger.getAttribute("data-open-asset") || state.selectedCategory);
     return;
   }
 
-  if (target.matches("[data-edit-asset]")) {
-    openAssetDialog(target.getAttribute("data-edit-asset"));
+  const editAssetTrigger = event.target.closest("[data-edit-asset]");
+  if (editAssetTrigger) {
+    openAssetDialog(editAssetTrigger.getAttribute("data-edit-asset"));
     return;
   }
 
-  if (target.matches("[data-assign-asset]")) {
-    openAssignmentDialog(target.getAttribute("data-assign-asset"));
+  const assignAssetTrigger = event.target.closest("[data-assign-asset]");
+  if (assignAssetTrigger) {
+    openAssignmentDialog(assignAssetTrigger.getAttribute("data-assign-asset"));
     return;
   }
 
-  if (target.matches("[data-release-asset]")) {
-    releaseAsset(target.getAttribute("data-release-asset"));
+  const releaseAssetTrigger = event.target.closest("[data-release-asset]");
+  if (releaseAssetTrigger) {
+    releaseAsset(releaseAssetTrigger.getAttribute("data-release-asset"));
     return;
   }
 
-  if (target.matches("[data-close-dialog]")) {
-    closeDialog(target.getAttribute("data-close-dialog"));
+  const closeDialogTrigger = event.target.closest("[data-close-dialog]");
+  if (closeDialogTrigger) {
+    closeDialog(closeDialogTrigger.getAttribute("data-close-dialog"));
   }
 }
 
@@ -588,8 +812,15 @@ function handleBodyInput(event) {
   }
 
   if (target.id === "employee-search-input") {
+    state.employeeSearchRaw = target.value;
     state.employeeSearch = normalizeEmployeeCode(target.value);
+    if (isCloudMode()) {
+      state.employeesSearchSnapshot = null;
+    }
     updateEmployeeSearchResults();
+    if (isCloudMode()) {
+      scheduleDebouncedEmployeeSearch();
+    }
     return;
   }
 
@@ -614,9 +845,23 @@ function handleBodyChange(event) {
 }
 
 function renderApp() {
-  renderStats();
-  renderNavigation();
-  renderCurrentView();
+  try {
+    renderStats();
+  } catch (error) {
+    console.error("renderStats failed", error);
+  }
+
+  try {
+    renderNavigation();
+  } catch (error) {
+    console.error("renderNavigation failed", error);
+  }
+
+  try {
+    renderCurrentView();
+  } catch (error) {
+    console.error("renderCurrentView failed", error);
+  }
 }
 
 function renderStats() {
@@ -637,28 +882,146 @@ function renderNavigation() {
   });
 }
 
+function cleanupBeforeViewRender() {
+  const previousView = lastRenderedViewName;
+  const nextView = state.currentView;
+
+  if (previousView === "employees" && nextView !== "employees") {
+    if (employeeSearchAbortController) {
+      employeeSearchAbortController.abort();
+      employeeSearchAbortController = null;
+    }
+    if (employeeSearchDebounceTimer !== null) {
+      clearTimeout(employeeSearchDebounceTimer);
+      employeeSearchDebounceTimer = null;
+    }
+    state.employeesSearchSnapshot = null;
+  }
+
+  lastRenderedViewName = nextView;
+}
+
+function updateCategorySearchResults() {
+  try {
+    const panel = document.getElementById("category-search-result-panel");
+    const tbody = document.getElementById("category-table-body");
+    if (panel) {
+      panel.innerHTML = renderCategorySearchResult();
+    }
+    if (tbody) {
+      tbody.innerHTML = renderCategoryTableRows();
+    }
+  } catch (error) {
+    console.error("updateCategorySearchResults failed", error);
+  }
+}
+
+function updateEmployeeSearchResults() {
+  try {
+    const panel = document.getElementById("employee-search-result-panel");
+    const tbody = document.getElementById("employee-table-body");
+    if (panel) {
+      panel.innerHTML = renderEmployeeSearchResult();
+    }
+    if (tbody) {
+      tbody.innerHTML = renderEmployeeTableRows();
+    }
+  } catch (error) {
+    console.error("updateEmployeeSearchResults failed", error);
+  }
+}
+
+function escapeLikePattern(value) {
+  return String(value || "").replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function scheduleDebouncedEmployeeSearch() {
+  if (employeeSearchDebounceTimer !== null) {
+    clearTimeout(employeeSearchDebounceTimer);
+  }
+
+  employeeSearchDebounceTimer = window.setTimeout(() => {
+    employeeSearchDebounceTimer = null;
+    void runDebouncedEmployeeSearch();
+  }, 300);
+}
+
+async function runDebouncedEmployeeSearch() {
+  if (state.currentView !== "employees" || !isCloudMode()) {
+    return;
+  }
+
+  const rawQuery = state.employeeSearchRaw.trim();
+  if (!rawQuery) {
+    state.employeesSearchSnapshot = null;
+    updateEmployeeSearchResults();
+    return;
+  }
+
+  if (employeeSearchAbortController) {
+    employeeSearchAbortController.abort();
+  }
+
+  employeeSearchAbortController = new AbortController();
+  const controller = employeeSearchAbortController;
+  const signal = controller.signal;
+
+  try {
+    const escaped = escapeLikePattern(rawQuery);
+    const pattern = `%${escaped}%`;
+    const orClause = `name.ilike.${pattern},employee_id.ilike.${pattern},email.ilike.${pattern},department.ilike.${pattern}`;
+    const employeeSearchQuery = supabaseClient.from("employees").select("*").or(orClause);
+    const { data, error } = await withAbortSignal(employeeSearchQuery, signal);
+
+    if (error) {
+      throw error;
+    }
+
+    state.employeesSearchSnapshot = normalizeEmployees(data ?? []);
+    updateEmployeeSearchResults();
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return;
+    }
+    console.warn("Employee search request failed", error);
+    state.employeesSearchSnapshot = null;
+    updateEmployeeSearchResults();
+  } finally {
+    if (employeeSearchAbortController === controller) {
+      employeeSearchAbortController = null;
+    }
+  }
+}
+
 function renderCurrentView() {
-  if (state.isLoading) {
-    viewContainer.innerHTML = '<div class="loading-state">Loading dashboard data...</div>';
-    return;
-  }
+  cleanupBeforeViewRender();
 
-  if (state.currentView === "employees") {
-    viewContainer.innerHTML = renderEmployeesView();
-    return;
-  }
+  try {
+    if (state.isLoading) {
+      viewContainer.innerHTML = '<div class="loading-state">Loading dashboard data...</div>';
+      return;
+    }
 
-  if (state.currentView === "history") {
-    viewContainer.innerHTML = renderHistoryView();
-    return;
-  }
+    if (state.currentView === "employees") {
+      viewContainer.innerHTML = renderEmployeesView();
+      return;
+    }
 
-  if (state.currentView === "category") {
-    viewContainer.innerHTML = renderCategoryView();
-    return;
-  }
+    if (state.currentView === "history") {
+      viewContainer.innerHTML = renderHistoryView();
+      return;
+    }
 
-  viewContainer.innerHTML = renderOverviewView();
+    if (state.currentView === "category") {
+      viewContainer.innerHTML = renderCategoryView();
+      return;
+    }
+
+    viewContainer.innerHTML = renderOverviewView();
+  } catch (error) {
+    console.error("renderCurrentView failed", error);
+    viewContainer.innerHTML = '<div class="loading-state error-text">This view failed to render. Try another tab or refresh the page.</div>';
+  }
 }
 
 function renderOverviewView() {
@@ -725,8 +1088,8 @@ function renderEmployeesView() {
       </div>
       <div class="search-panel">
         <label class="toolbar-field search-label">
-          Search by Employee ID
-          <input id="employee-search-input" type="search" placeholder="EMP-1001" value="${escapeHtml(state.employeeSearch)}" autocomplete="off">
+          Search employees
+          <input id="employee-search-input" type="search" placeholder="Name, Employee ID, email, or department" value="${escapeHtml(state.employeeSearchRaw)}" autocomplete="off">
         </label>
         <div id="employee-search-result-panel">${renderEmployeeSearchResult()}</div>
       </div>
@@ -878,22 +1241,6 @@ function openAssetDialog(assetId = "", categoryKey = state.selectedCategory) {
   }
 
   assetDialog.showModal();
-}
-
-function openAssignmentDialog(assetId) {
-  const asset = findAsset(assetId);
-  if (!asset) {
-    return;
-  }
-
-  assignmentForm.reset();
-  assignmentForm.elements.assetId.value = assetId;
-  assignmentSummary.textContent = `${asset.asset_name} • ${getCategoryDefinition(asset.category).label}`;
-  assignmentEmployeeSelect.innerHTML = state.employees.map((employee) => `
-    <option value="${employee.id}">${escapeHtml(formatEmployeeLabel(employee))}</option>
-  `).join("");
-
-  assignmentDialog.showModal();
 }
 
 async function handleEmployeeSave(event) {
@@ -1194,9 +1541,23 @@ function clearStoredLocalSession() {
 }
 
 function clearWorkingData() {
+  abortCloudSnapshotFetch();
+  if (employeeSearchAbortController) {
+    employeeSearchAbortController.abort();
+    employeeSearchAbortController = null;
+  }
+  if (employeeSearchDebounceTimer !== null) {
+    clearTimeout(employeeSearchDebounceTimer);
+    employeeSearchDebounceTimer = null;
+  }
+
   state.employees = [];
   state.assets = [];
   state.assignments = [];
+  state.employeeSearch = "";
+  state.employeeSearchRaw = "";
+  state.employeesSearchSnapshot = null;
+  clearCloudCache();
   renderApp();
 }
 
@@ -1324,26 +1685,43 @@ function normalizeCategoryKey(categoryKey, assetName = "", notes = "") {
 }
 
 function populateCategorySelect() {
-  assetCategorySelect.innerHTML = CATEGORY_DEFINITIONS.map((category) => `
-    <option value="${category.key}">${escapeHtml(category.label)}</option>
-  `).join("");
-  syncAssetSerialLabel(assetCategorySelect.value || CATEGORY_DEFINITIONS[0].key);
+  try {
+    assetCategorySelect.innerHTML = CATEGORY_DEFINITIONS.map((category) => `
+      <option value="${category.key}">${escapeHtml(category.label)}</option>
+    `).join("");
+    syncAssetSerialLabel(assetCategorySelect.value || CATEGORY_DEFINITIONS[0].key);
+  } catch (error) {
+    console.error("populateCategorySelect failed", error);
+  }
 }
 
 function syncAssetSerialLabel(categoryKey) {
   assetSerialLabel.textContent = getCategoryDefinition(categoryKey).serialLabel;
 }
 
+function getEmployeesForEmployeesView() {
+  if (state.employeesSearchSnapshot !== null) {
+    return state.employeesSearchSnapshot;
+  }
+
+  return getFilteredEmployees();
+}
+
 function getFilteredEmployees() {
-  if (!state.employeeSearch) {
+  const raw = state.employeeSearchRaw.trim();
+  if (!raw) {
     return state.employees;
   }
 
-  return state.employees.filter((employee) => normalizeEmployeeCode(employee.employee_id).includes(state.employeeSearch));
+  const needle = raw.toLowerCase();
+  return state.employees.filter((employee) => {
+    const haystack = `${employee.name} ${employee.employee_id} ${employee.email} ${employee.department}`.toLowerCase();
+    return haystack.includes(needle);
+  });
 }
 
 function renderEmployeeTableRows() {
-  const filteredEmployees = getFilteredEmployees();
+  const filteredEmployees = getEmployeesForEmployeesView();
   const rows = filteredEmployees.map((employee) => {
     const assignedAssets = getEmployeeAssets(employee.id);
     return `
@@ -1365,7 +1743,8 @@ function renderEmployeeTableRows() {
     `;
   }).join("");
 
-  return rows || createEmptyRowMarkup(6, state.employeeSearch ? "No employee matches that Employee ID" : "No employees added yet");
+  const emptyHint = state.employeeSearchRaw.trim() ? "No employees match that search" : "No employees added yet";
+  return rows || createEmptyRowMarkup(6, emptyHint);
 }
 
 function renderCategoryTableRows() {
@@ -1403,31 +1782,28 @@ function findEmployeeByCode(employeeCode) {
 }
 
 function renderEmployeeSearchResult() {
-  if (!state.employeeSearch) {
-    return '<div class="search-result">Enter a full Employee ID to load the employee details and assigned assets.</div>';
+  const raw = state.employeeSearchRaw.trim();
+
+  if (!raw) {
+    return '<div class="search-result">Search by name, Employee ID, email, or department. Your search text stays on this screen even if you visit Overview or a category and come back.</div>';
   }
 
+  const matches = getEmployeesForEmployeesView();
   const exactMatch = findEmployeeByCode(state.employeeSearch);
-  if (!exactMatch) {
-    if (state.employeeSearch.length < 8) {
-      return `<div class="search-result">Keep typing the Employee ID. Current input: <strong>${escapeHtml(state.employeeSearch)}</strong></div>`;
-    }
 
-    return `<div class="search-result">No employee found for <strong>${escapeHtml(state.employeeSearch)}</strong>.</div>`;
-  }
+  if (exactMatch) {
+    const exactAssignedAssets = getEmployeeAssets(exactMatch.id);
+    const exactAssignedAssetMarkup = exactAssignedAssets.length
+      ? exactAssignedAssets.map((asset) => `<li>${escapeHtml(asset.asset_name)} <span class="muted-line">${escapeHtml(getCategoryDefinition(asset.category).label)} • ${escapeHtml(asset.serial_number)}</span></li>`).join("")
+      : "<li>No assets assigned right now.</li>";
 
-  const exactAssignedAssets = getEmployeeAssets(exactMatch.id);
-  const exactAssignedAssetMarkup = exactAssignedAssets.length
-    ? exactAssignedAssets.map((asset) => `<li>${escapeHtml(asset.asset_name)} <span class="muted-line">${escapeHtml(getCategoryDefinition(asset.category).label)} â€¢ ${escapeHtml(asset.serial_number)}</span></li>`).join("")
-    : "<li>No assets assigned right now.</li>";
-
-  return `
+    return `
     <div class="search-result">
       <div class="search-result-card">
         <div class="search-result-head">
           <div>
             <div class="search-result-name">${escapeHtml(exactMatch.name)}</div>
-            <div class="search-result-meta">${escapeHtml(exactMatch.employee_id)} â€¢ ${escapeHtml(exactMatch.department || "No department")}</div>
+            <div class="search-result-meta">${escapeHtml(exactMatch.employee_id)} • ${escapeHtml(exactMatch.department || "No department")}</div>
           </div>
           <span class="status-badge ${exactAssignedAssets.length ? "assigned" : "available"}">${exactAssignedAssets.length ? `${exactAssignedAssets.length} assigned` : "No assigned assets"}</span>
         </div>
@@ -1442,39 +1818,45 @@ function renderEmployeeSearchResult() {
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
+  }
 
-  return matches.map((employee) => {
+  if (!matches.length) {
+    return `<div class="search-result">No employees match <strong>${escapeHtml(raw)}</strong>.</div>`;
+  }
+
+  if (matches.length === 1) {
+    const employee = matches[0];
     const assignedAssets = getEmployeeAssets(employee.id);
     const assignedAssetMarkup = assignedAssets.length
       ? assignedAssets.map((asset) => `<li>${escapeHtml(asset.asset_name)} <span class="muted-line">${escapeHtml(getCategoryDefinition(asset.category).label)} • ${escapeHtml(asset.serial_number)}</span></li>`).join("")
       : "<li>No assets assigned right now.</li>";
 
     return `
-      <div class="search-result">
-        <div class="search-result-card">
-          <div class="search-result-head">
-            <div>
-              <div class="search-result-name">${escapeHtml(employee.name)}</div>
-              <div class="search-result-meta">${escapeHtml(employee.employee_id)} • ${escapeHtml(employee.department || "No department")}</div>
-            </div>
-            <span class="status-badge ${assignedAssets.length ? "assigned" : "available"}">${assignedAssets.length ? `${assignedAssets.length} assigned` : "No assigned assets"}</span>
+    <div class="search-result">
+      <div class="search-result-card">
+        <div class="search-result-head">
+          <div>
+            <div class="search-result-name">${escapeHtml(employee.name)}</div>
+            <div class="search-result-meta">${escapeHtml(employee.employee_id)} • ${escapeHtml(employee.department || "No department")}</div>
           </div>
-          <div class="search-result-grid">
-            <div class="mini-card">
-              <h3>Employee details</h3>
-              <div class="search-result-meta">${escapeHtml(employee.email || "No email added")}</div>
-            </div>
-            <div class="mini-card">
-              <h3>Assigned assets</h3>
-              <ul class="asset-list">${assignedAssetMarkup}</ul>
-            </div>
+          <span class="status-badge ${assignedAssets.length ? "assigned" : "available"}">${assignedAssets.length ? `${assignedAssets.length} assigned` : "No assigned assets"}</span>
+        </div>
+        <div class="search-result-grid">
+          <div class="mini-card">
+            <h3>Employee details</h3>
+            <div class="search-result-meta">${escapeHtml(employee.email || "No email added")}</div>
+          </div>
+          <div class="mini-card">
+            <h3>Assigned assets</h3>
+            <ul class="asset-list">${assignedAssetMarkup}</ul>
           </div>
         </div>
       </div>
-    `;
-  }).join("");
+    </div>`;
+  }
+
+  return `<div class="search-result"><strong>${matches.length}</strong> employees match <strong>${escapeHtml(raw)}</strong>. Refine the search or pick a row in the table.</div>`;
 }
 
 function renderCategorySearchResult() {
@@ -1519,64 +1901,6 @@ function syncAssignmentEmployeeSelection() {
     <div class="search-result-card">
       <div class="search-result-name">${escapeHtml(matchedEmployee.name)}</div>
       <div class="search-result-meta">${escapeHtml(matchedEmployee.employee_id)} • ${escapeHtml(matchedEmployee.department || "No department")}</div>
-    </div>
-  `;
-}
-
-function renderEmployeesView() {
-  const filteredEmployees = getFilteredEmployees();
-  const rows = filteredEmployees.map((employee) => {
-    const assignedAssets = getEmployeeAssets(employee.id);
-    return `
-      <tr>
-        <td>
-          ${escapeHtml(employee.name)}
-          <span class="muted-line">${escapeHtml(employee.email || "No email")}</span>
-        </td>
-        <td>${escapeHtml(employee.employee_id)}</td>
-        <td>${escapeHtml(employee.department || "-")}</td>
-        <td>${assignedAssets.length}</td>
-        <td>${assignedAssets.length ? assignedAssets.map((asset) => escapeHtml(asset.asset_name)).join(", ") : "-"}</td>
-        <td>
-          <div class="table-actions">
-            <button type="button" class="table-button" data-edit-employee="${employee.id}">Edit</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join("");
-
-  return `
-    <div class="dashboard-band">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Employees</p>
-          <h2>Create and manage employees</h2>
-        </div>
-        <button type="button" class="secondary-button" data-open-employee>Create employee</button>
-      </div>
-      <div class="search-panel">
-        <label class="toolbar-field search-label">
-          Search by Employee ID
-          <input id="employee-search-input" type="search" placeholder="EMP-1001" value="${escapeHtml(state.employeeSearch)}" autocomplete="off">
-        </label>
-        ${renderEmployeeSearchResult()}
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Employee ID</th>
-              <th>Department</th>
-              <th>Assigned assets</th>
-              <th>Asset list</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>${rows || createEmptyRowMarkup(6, state.employeeSearch ? "No employee matches that Employee ID" : "No employees added yet")}</tbody>
-        </table>
-      </div>
     </div>
   `;
 }
