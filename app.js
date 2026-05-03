@@ -571,6 +571,16 @@ async function loadCloudData(options = {}) {
   }
 }
 
+/** Refetch all dashboard tables from Supabase and rewrite localStorage cache. Bypasses SWR so writes show up immediately. */
+async function refreshCloudWorkspace(extra = {}) {
+  const { seedIfEmpty = false, ...passThrough } = extra;
+  return loadCloudData({
+    ...passThrough,
+    seedIfEmpty,
+    allowCacheHydrate: false
+  });
+}
+
 async function revalidateCloudDataset(options = {}) {
   if (!supabaseClient || !state.session) {
     return;
@@ -1307,7 +1317,7 @@ async function handleEmployeeSave(event) {
       toast(error.message, "error");
       return;
     }
-    await loadCloudData({ seedIfEmpty: false });
+    await refreshCloudWorkspace();
   } else {
     saveEmployeeLocally(payload);
   }
@@ -1360,7 +1370,7 @@ async function handleAssetSave(event) {
       toast(error.message, "error");
       return;
     }
-    await loadCloudData({ seedIfEmpty: false });
+    await refreshCloudWorkspace();
   } else {
     saveAssetLocally(payload);
   }
@@ -1383,7 +1393,7 @@ async function handleAssignmentSave(event) {
   }
 
   if (isCloudMode()) {
-    await releaseAssetCloud(assetId, false);
+    await releaseAssetCloud(assetId, false, { skipWorkspaceReload: true });
     const { error: assignmentError } = await supabaseClient.from("assignments").insert({
       asset_id: assetId,
       employee_id: employeeId,
@@ -1407,7 +1417,7 @@ async function handleAssignmentSave(event) {
       return;
     }
 
-    await loadCloudData({ seedIfEmpty: false });
+    await refreshCloudWorkspace();
   } else {
     assignAssetLocally(assetId, employeeId, note, now);
   }
@@ -1426,7 +1436,7 @@ async function releaseAsset(assetId) {
   toast("Asset released.", "success");
 }
 
-async function releaseAssetCloud(assetId, notifyUser) {
+async function releaseAssetCloud(assetId, notifyUser, { skipWorkspaceReload = false } = {}) {
   const activeAssignment = findActiveAssignmentByAsset(assetId);
   if (activeAssignment) {
     const { error: assignmentError } = await supabaseClient
@@ -1450,7 +1460,10 @@ async function releaseAssetCloud(assetId, notifyUser) {
     return;
   }
 
-  await loadCloudData({ seedIfEmpty: false });
+  if (!skipWorkspaceReload) {
+    await refreshCloudWorkspace();
+  }
+
   if (notifyUser) {
     toast("Asset released.", "success");
   }
