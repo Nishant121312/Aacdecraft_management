@@ -769,6 +769,9 @@ function handleBodyClick(event) {
   if (categoryTrigger) {
     state.selectedCategory = categoryTrigger.getAttribute("data-category");
     state.currentView = "category";
+    if (categoryTrigger.closest("#category-strip")) {
+      setExclusiveCategoryStripButton(categoryTrigger);
+    }
     renderApp();
     return;
   }
@@ -908,12 +911,33 @@ function syncWorkspaceTabsFromState() {
   });
 }
 
+function setExclusiveCategoryStripButton(selectedButton) {
+  const strip = document.getElementById("category-strip");
+  if (!strip || !selectedButton) {
+    return;
+  }
+
+  strip.querySelectorAll(".category-button").forEach((button) => {
+    button.classList.toggle("active", button === selectedButton);
+  });
+}
+
+function syncCategoryStripFromState() {
+  const strip = document.getElementById("category-strip");
+  if (!strip) {
+    return;
+  }
+
+  const activeOnStrip = state.currentView === "category";
+  const match = activeOnStrip ? strip.querySelector(`[data-category="${state.selectedCategory}"]`) : null;
+  strip.querySelectorAll(".category-button").forEach((button) => {
+    button.classList.toggle("active", Boolean(match) && button === match);
+  });
+}
+
 function renderNavigation() {
   syncWorkspaceTabsFromState();
-
-  document.querySelectorAll("[data-category]").forEach((button) => {
-    button.classList.toggle("active", button.getAttribute("data-category") === state.selectedCategory && state.currentView === "category");
-  });
+  syncCategoryStripFromState();
 }
 
 function cleanupBeforeViewRender() {
