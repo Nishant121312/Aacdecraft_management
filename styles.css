@@ -560,6 +560,17 @@ tbody tr:last-child td {
 
 .dashboard-nav {
   margin-bottom: 16px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(30, 41, 51, 0.07);
+  border: 1px solid rgba(30, 41, 51, 0.1);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.65);
 }
 
 .nav-button,
@@ -574,6 +585,39 @@ tbody tr:last-child td {
   line-height: 1.2;
 }
 
+.dashboard-nav .nav-button {
+  flex: 1 1 0;
+  min-width: 120px;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-weight: 600;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.dashboard-nav .nav-button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.45);
+  transform: none;
+}
+
+.dashboard-nav .nav-button.active {
+  background: linear-gradient(145deg, var(--accent) 0%, #e07845 55%, var(--accent-deep) 115%);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(212, 105, 61, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(0);
+}
+
+.dashboard-nav .nav-button.active:hover {
+  color: #fff;
+  filter: brightness(1.03);
+}
+
 .nav-button {
   min-width: 152px;
 }
@@ -583,7 +627,10 @@ tbody tr:last-child td {
   flex: 0 1 auto;
 }
 
-.nav-button:not(.active),
+#dashboard-nav .nav-button:not(.active) {
+  color: var(--muted);
+}
+
 .category-button:not(.active) {
   color: #a34c1e;
 }
@@ -594,7 +641,6 @@ tbody tr:last-child td {
   outline-offset: 2px;
 }
 
-.nav-button.active,
 .category-button.active {
   background: linear-gradient(135deg, var(--accent), #e68e61);
   color: #fff;
@@ -801,8 +847,8 @@ tbody tr:last-child td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .nav-button {
-    min-width: 140px;
+  #dashboard-nav .nav-button {
+    min-width: 120px;
   }
 }
 
@@ -831,12 +877,23 @@ tbody tr:last-child td {
     flex-direction: column;
   }
 
-  .dashboard-nav,
   .category-strip {
     gap: 10px;
   }
 
-  .nav-button,
+  .dashboard-nav {
+    flex-wrap: wrap;
+    width: 100%;
+    border-radius: 16px;
+    row-gap: 4px;
+    column-gap: 4px;
+  }
+
+  #dashboard-nav .nav-button {
+    min-width: 0;
+    flex: 1 1 calc(33.333% - 6px);
+  }
+
   .category-button {
     min-width: 0;
     flex: 1 1 160px;

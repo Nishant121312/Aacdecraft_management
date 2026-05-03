@@ -748,6 +748,9 @@ function handleBodyClick(event) {
   if (viewTrigger) {
     state.currentView = viewTrigger.getAttribute("data-view");
     state.activeViewTab = state.currentView;
+    if (viewTrigger.closest("#dashboard-nav")) {
+      setExclusiveWorkspaceTab(viewTrigger);
+    }
     renderApp();
     return;
   }
@@ -872,10 +875,31 @@ function renderStats() {
   document.getElementById("total-employees").textContent = String(totals.totalEmployees);
 }
 
-function renderNavigation() {
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("active", button.getAttribute("data-view") === state.activeViewTab);
+function setExclusiveWorkspaceTab(selectedButton) {
+  const nav = document.getElementById("dashboard-nav");
+  if (!nav || !selectedButton) {
+    return;
+  }
+
+  nav.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("active", button === selectedButton);
   });
+}
+
+function syncWorkspaceTabsFromState() {
+  const nav = document.getElementById("dashboard-nav");
+  if (!nav) {
+    return;
+  }
+
+  const match = nav.querySelector(`[data-view="${state.activeViewTab}"]`);
+  nav.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("active", Boolean(match) && button === match);
+  });
+}
+
+function renderNavigation() {
+  syncWorkspaceTabsFromState();
 
   document.querySelectorAll("[data-category]").forEach((button) => {
     button.classList.toggle("active", button.getAttribute("data-category") === state.selectedCategory && state.currentView === "category");
